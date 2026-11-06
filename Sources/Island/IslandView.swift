@@ -179,9 +179,9 @@ struct ExpandedView: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 HStack(spacing: 2) {
-                    tab(.home, "house.fill", "Ana")
                     tab(.music, "music.note", "Müzik")
                     tab(.timer, "timer", "Zamanlayıcı")
+                    tab(.calendar, "calendar", "Takvim")
                     tab(.shelf, "tray.fill", "Raf")
                 }
                 Spacer(minLength: model.hasNotch ? model.notch.width + 8 : 8)
@@ -191,6 +191,15 @@ struct ExpandedView: View {
                         Image(systemName: b.symbol).foregroundStyle(b.charging ? .green : (b.percent <= 20 ? .red : .white))
                         Text("%\(b.percent)").font(.system(size: 11, weight: .medium)).monospacedDigit()
                     }
+                    Button {
+                        AppController.shared.island.collapse()
+                        SettingsWindow.shared.show()
+                    } label: {
+                        Image(systemName: "gearshape.fill").font(.system(size: 11)).foregroundStyle(.secondary)
+                            .frame(width: 22, height: 22).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Ayarlar")
                 }
             }
             .padding(.horizontal, 14)
@@ -198,7 +207,7 @@ struct ExpandedView: View {
 
             Group {
                 switch model.page {
-                case .home: HomePage(model: model)
+                case .calendar: CalendarPage(model: model)
                 case .music: MusicPage(model: model)
                 case .timer: TimerPage()
                 case .shelf: ShelfPage(model: model)
@@ -226,26 +235,17 @@ struct ExpandedView: View {
     }
 }
 
-struct HomePage: View {
+struct CalendarPage: View {
     let model: IslandModel
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 14) {
-                Color.white.opacity(0.08)
-                    .overlay { if let t = model.thumb { Image(nsImage: t).resizable().scaledToFill() } }
-                    .frame(width: 120, height: 72)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Duvar Kâğıdı").font(.system(size: 15, weight: .semibold))
-                    Text(model.subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
+            if model.meeting == nil {
+                VStack(spacing: 8) {
+                    Image(systemName: "calendar").font(.system(size: 26)).foregroundStyle(.secondary)
+                    Text("Yaklaşan toplantı yok").font(.system(size: 12)).foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 0)
-                IslandButton(icon: "shuffle", help: "Rastgele duvar kâğıdı") { AppController.shared.shuffle() }
-                IslandButton(icon: "gearshape.fill", help: "Ayarlar") {
-                    AppController.shared.island.collapse()
-                    SettingsWindow.shared.show()
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             if let m = model.meeting {
                 HStack(spacing: 10) {

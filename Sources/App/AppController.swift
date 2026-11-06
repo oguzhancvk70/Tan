@@ -24,7 +24,6 @@ import AppKit
 
     func start() {
         isDark = Appearance.isDark
-        island.model.isDark = isDark
         observer = AppearanceObserver(
             onAppearance: { AppController.shared.syncAppearance() },
             onEnvironment: { AppController.shared.reapply() })
@@ -46,7 +45,6 @@ import AppKit
         let now = Appearance.isDark
         guard now != isDark else { return }
         isDark = now
-        island.model.isDark = now
         onModeChange?()
         reapply()
     }
@@ -125,9 +123,6 @@ import AppKit
 
     private func applied(_ url: URL, _ mode: Mode) {
         revision += 1
-        guard mode == self.mode else { return }
-        island.model.thumb = Thumbnail.make(url, maxPixel: 360)
-        island.model.subtitle = prefs.choice(for: mode)?.caption ?? url.lastPathComponent
     }
 
     func choose(_ c: WallpaperChoice?, for mode: Mode) {

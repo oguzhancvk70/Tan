@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-enum IslandPage: Hashable { case home, music, timer, shelf }
+enum IslandPage: Hashable { case music, timer, calendar, shelf }
 enum LiveKind: Equatable { case meeting, timer, music }
 
 struct IslandToast: Equatable {
@@ -16,12 +16,9 @@ struct IslandToast: Equatable {
 @MainActor @Observable final class IslandModel {
     enum Phase { case idle, toast, expanded }
     var phase: Phase = .idle
-    var page: IslandPage = .home
+    var page: IslandPage = .music
     var notch: CGSize = .zero
-    var toast = IslandToast(icon: "moon.fill", tint: .white, title: "")
-    var thumb: NSImage?
-    var subtitle = ""
-    var isDark = false
+    var toast = IslandToast(icon: "music.note", tint: .white, title: "")
     var nowPlaying: NowPlaying?
     var meeting: Meeting?
     var mic = false
@@ -164,10 +161,10 @@ struct IslandToast: Equatable {
             model.page = .shelf
         } else if model.phase != .expanded {
             switch model.live {
-            case .meeting: model.page = .home
+            case .meeting: model.page = .calendar
             case .timer: model.page = .timer
             case .music: model.page = .music
-            case nil: model.page = .home
+            case nil: model.page = .music
             }
         }
         model.phase = .expanded
