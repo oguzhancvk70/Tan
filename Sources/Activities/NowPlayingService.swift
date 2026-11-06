@@ -185,7 +185,9 @@ enum MediaCommand: Int { case playPause = 2, next = 4, previous = 5 }
     // kontrol
     func command(_ c: MediaCommand) {
         guard var np = current else { return }
-        if np.source == .remote, let lib = adapterPath {
+        if np.source == .remote, let pipe = stdinPipe {
+            try? pipe.fileHandleForWriting.write(contentsOf: Data("\(c.rawValue)\n".utf8))
+        } else if np.source == .remote, let lib = adapterPath {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
             p.arguments = ["-e", Self.perl, lib, "tan_send"]
@@ -204,6 +206,11 @@ enum MediaCommand: Int { case playPause = 2, next = 4, previous = 5 }
             current = np
             onChange?(np, false)
         }
+    }
+
+    func openSourceApp() {
+        guard let id = current?.bundleID, let u = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return }
+        NSWorkspace.shared.openApplication(at: u, configuration: .init())
     }
 
     @discardableResult private static func run(_ src: String) -> NSAppleEventDescriptor? {

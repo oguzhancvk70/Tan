@@ -32,7 +32,7 @@ import AppKit
 
     private func buildMenu() -> NSMenu {
         let m = NSMenu()
-        m.addItem(item(app.isDark ? "Açık Moda Geç" : "Karanlık Moda Geç", #selector(toggle)))
+        m.addItem(modeSwitchItem())
         m.addItem(.separator())
         m.addItem(item("Rastgele Duvar Kâğıdı", #selector(shuffle)))
         if Preferences.shared.choice(for: app.mode)?.isFolder == true {
@@ -51,7 +51,33 @@ import AppKit
         return i
     }
 
-    @objc private func toggle() { app.toggle() }
+    // menüde açık/koyu anahtarı
+    private weak var modeIcon: NSImageView?
+
+    private func modeSwitchItem() -> NSMenuItem {
+        let v = NSView(frame: NSRect(x: 0, y: 0, width: 230, height: 32))
+        let icon = NSImageView(frame: NSRect(x: 14, y: 8, width: 16, height: 16))
+        icon.image = NSImage(systemSymbolName: app.isDark ? "moon.fill" : "sun.max.fill", accessibilityDescription: nil)
+        icon.contentTintColor = .labelColor
+        let label = NSTextField(labelWithString: "Karanlık Mod")
+        label.font = .menuFont(ofSize: 0)
+        label.frame = NSRect(x: 38, y: 7, width: 120, height: 18)
+        let sw = NSSwitch(frame: NSRect(x: 172, y: 5, width: 44, height: 22))
+        sw.state = app.isDark ? .on : .off
+        sw.target = self
+        sw.action = #selector(switchChanged(_:))
+        [icon, label, sw].forEach(v.addSubview)
+        modeIcon = icon
+        let item = NSMenuItem()
+        item.view = v
+        return item
+    }
+
+    @objc private func switchChanged(_ s: NSSwitch) {
+        if (s.state == .on) != app.isDark { app.toggle() }
+        s.state = app.isDark ? .on : .off
+        modeIcon?.image = NSImage(systemSymbolName: app.isDark ? "moon.fill" : "sun.max.fill", accessibilityDescription: nil)
+    }
     @objc private func shuffle() { app.shuffle() }
     @objc private func next() { app.nextInFolder() }
     @objc private func gallery() { SettingsWindow.shared.show(tab: .gallery) }

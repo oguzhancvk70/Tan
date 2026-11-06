@@ -237,11 +237,10 @@ struct HomePage: View {
                     .frame(width: 120, height: 72)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(model.isDark ? "Karanlık Mod" : "Açık Mod").font(.system(size: 15, weight: .semibold))
+                    Text("Duvar Kâğıdı").font(.system(size: 15, weight: .semibold))
                     Text(model.subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
                 }
                 Spacer(minLength: 0)
-                IslandButton(icon: model.isDark ? "sun.max.fill" : "moon.fill", help: "Modu değiştir") { AppController.shared.toggle() }
                 IslandButton(icon: "shuffle", help: "Rastgele duvar kâğıdı") { AppController.shared.shuffle() }
                 IslandButton(icon: "gearshape.fill", help: "Ayarlar") {
                     AppController.shared.island.collapse()
@@ -279,7 +278,9 @@ struct MusicPage: View {
     var body: some View {
         if let n = model.nowPlaying {
             HStack(spacing: 16) {
-                ArtworkView(image: n.artwork, size: 100, radius: 14)
+                Button { np.openSourceApp() } label: { ArtworkView(image: n.artwork, size: 100, radius: 14) }
+                    .buttonStyle(.plain)
+                    .help("\(n.appName ?? "Uygulama") uygulamasını aç")
                 VStack(alignment: .leading, spacing: 6) {
                     Text(n.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
                     Text(n.artist.isEmpty ? (n.appName ?? "") : n.artist).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)

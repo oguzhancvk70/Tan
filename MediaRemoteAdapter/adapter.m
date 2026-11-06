@@ -64,10 +64,16 @@ void tan_stream(void) {
         [NSNotificationCenter.defaultCenter addObserverForName:n object:nil queue:NSOperationQueue.mainQueue
                                                     usingBlock:^(NSNotification *note) { emit(); }];
     }
-    // ana uygulama kapanınca çık
+    // stdin: her satır bir komut; EOF = ana uygulama kapandı
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
-        char buf[64];
-        while (fread(buf, 1, sizeof buf, stdin) > 0) {}
+        char line[64];
+        while (fgets(line, sizeof line, stdin)) {
+            int cmd = atoi(line);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                SendFn send = (SendFn)dlsym(mr(), "MRMediaRemoteSendCommand");
+                if (send) send(cmd, nil);
+            });
+        }
         exit(0);
     });
     emit();
@@ -78,4 +84,5 @@ void tan_send(void) {
     const char *c = getenv("TAN_CMD");
     SendFn send = (SendFn)dlsym(mr(), "MRMediaRemoteSendCommand");
     if (c && send) send(atoi(c), nil);
+    CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, false);
 }

@@ -49,8 +49,6 @@ import AppKit
         island.model.isDark = now
         onModeChange?()
         reapply()
-        island.show(IslandToast(icon: now ? "moon.fill" : "sun.max.fill", tint: now ? .indigo : .yellow,
-                                title: now ? "Karanlık Mod" : "Açık Mod"))
     }
 
     // ada etkinlikleri
