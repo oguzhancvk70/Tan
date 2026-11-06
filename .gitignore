@@ -1,4 +1,4 @@
-build/
+build.noindex/
 Tan.xcodeproj/
 .DS_Store
 .claude/structure.md

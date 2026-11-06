@@ -1,5 +1,5 @@
 APP := Tan
-BUILD := build
+BUILD := build.noindex
 PRODUCT := $(BUILD)/Build/Products/Release/$(APP).app
 ADAPTER := Resources/MediaRemoteAdapter.dylib
 DMG := $(BUILD)/$(APP).dmg
@@ -30,6 +30,7 @@ dmg: build
 	cp -R $(PRODUCT) $(BUILD)/dmg/
 	ln -s /Applications $(BUILD)/dmg/Applications
 	hdiutil create -volname $(APP) -srcfolder $(BUILD)/dmg -ov -format UDZO -quiet $(DMG)
+	rm -rf $(BUILD)/dmg
 
 install-dmg: dmg
 	-pkill -x $(APP)
