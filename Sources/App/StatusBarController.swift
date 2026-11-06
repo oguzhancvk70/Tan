@@ -40,6 +40,10 @@ import AppKit
         }
         m.addItem(item("Galeri…", #selector(gallery)))
         m.addItem(.separator())
+        let claude = item("Claude ile Sohbet" + (Preferences.shared.claudeHotKey.map { "  \($0.display)" } ?? ""), #selector(claudeChat))
+        claude.image = NSImage(systemSymbolName: "sparkle", accessibilityDescription: nil)
+        m.addItem(claude)
+        m.addItem(.separator())
         m.addItem(item("Ayarlar…", #selector(settings), key: ","))
         m.addItem(item("Çıkış", #selector(quit), key: "q"))
         return m
@@ -80,6 +84,7 @@ import AppKit
     }
     @objc private func shuffle() { app.shuffle() }
     @objc private func next() { app.nextInFolder() }
+    @objc private func claudeChat() { ClaudePanelController.shared.show() }
     @objc private func gallery() { SettingsWindow.shared.show(tab: .gallery) }
     @objc private func settings() { SettingsWindow.shared.show() }
     @objc private func quit() { NSApp.terminate(nil) }

@@ -65,14 +65,25 @@ struct WallpaperChoice: Codable, Equatable {
     var islandAudio: Bool { didSet { UserDefaults.standard.set(islandAudio, forKey: "islandAudio") } }
     var shuffleQuery: String { didSet { UserDefaults.standard.set(shuffleQuery, forKey: "shuffleQuery") } }
     var includeAnime: Bool { didSet { UserDefaults.standard.set(includeAnime, forKey: "includeAnime") } }
-    var hotKey: HotKey? {
-        didSet {
-            if let hotKey, let data = try? JSONEncoder().encode(hotKey) {
-                UserDefaults.standard.set(data, forKey: "hotKey")
-            } else {
-                UserDefaults.standard.set(false, forKey: "hotKey")
-            }
+    var islandClipboard: Bool { didSet { UserDefaults.standard.set(islandClipboard, forKey: "islandClipboard") } }
+    var islandScreenshots: Bool { didSet { UserDefaults.standard.set(islandScreenshots, forKey: "islandScreenshots") } }
+    var islandDownloads: Bool { didSet { UserDefaults.standard.set(islandDownloads, forKey: "islandDownloads") } }
+    var claudeFolder: String { didSet { UserDefaults.standard.set(claudeFolder, forKey: "claudeFolder") } }
+    var claudeEdits: Bool { didSet { UserDefaults.standard.set(claudeEdits, forKey: "claudeEdits") } }
+    var hotKey: HotKey? { didSet { Self.saveHotKey(hotKey, "hotKey") } }
+    var claudeHotKey: HotKey? { didSet { Self.saveHotKey(claudeHotKey, "claudeHotKey") } }
+
+    private static func saveHotKey(_ hk: HotKey?, _ key: String) {
+        if let hk, let data = try? JSONEncoder().encode(hk) {
+            UserDefaults.standard.set(data, forKey: key)
+        } else {
+            UserDefaults.standard.set(false, forKey: key)
         }
+    }
+
+    private static func loadHotKey(_ key: String, _ def: HotKey) -> HotKey? {
+        let raw = UserDefaults.standard.object(forKey: key)
+        return raw == nil ? def : (raw as? Data).flatMap { try? JSONDecoder().decode(HotKey.self, from: $0) }
     }
 
     init() {
@@ -93,8 +104,14 @@ struct WallpaperChoice: Codable, Equatable {
         islandEnabled = d.bool(forKey: "islandEnabled")
         shuffleQuery = d.string(forKey: "shuffleQuery") ?? ""
         includeAnime = d.bool(forKey: "includeAnime")
-        let raw = d.object(forKey: "hotKey")
-        hotKey = raw == nil ? .default : (raw as? Data).flatMap { try? JSONDecoder().decode(HotKey.self, from: $0) }
+        d.register(defaults: ["islandClipboard": true, "islandScreenshots": true, "islandDownloads": true])
+        islandClipboard = d.bool(forKey: "islandClipboard")
+        islandScreenshots = d.bool(forKey: "islandScreenshots")
+        islandDownloads = d.bool(forKey: "islandDownloads")
+        claudeFolder = d.string(forKey: "claudeFolder") ?? NSHomeDirectory()
+        claudeEdits = d.bool(forKey: "claudeEdits")
+        hotKey = Self.loadHotKey("hotKey", .default)
+        claudeHotKey = Self.loadHotKey("claudeHotKey", .claudeDefault)
     }
 
     func choice(for mode: Mode) -> WallpaperChoice? { mode == .light ? light : dark }

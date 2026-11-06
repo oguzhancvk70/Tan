@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-enum IslandPage: Hashable { case music, timer, calendar, shelf }
+enum IslandPage: Hashable { case music, timer, calendar, shelf, clipboard, system }
 enum LiveKind: Equatable { case meeting, timer, music }
 
 struct IslandToast: Equatable {
@@ -31,7 +31,11 @@ struct IslandToast: Equatable {
     var notchWidth: CGFloat { hasNotch ? notch.width : 0 }
     var barHeight: CGFloat { hasNotch ? notch.height : 30 }
     var topInset: CGFloat { hasNotch ? notch.height : 6 }
-    var panelSize: CGSize { CGSize(width: max(notchWidth + 360, 540), height: barHeight + 160) }
+    var panelSize: CGSize { CGSize(width: max(notchWidth + 440, 620), height: barHeight + 160) }
+
+    func addToShelf(_ u: URL) {
+        if !shelf.contains(u) { shelf.append(u) }
+    }
 
     var live: LiveKind? {
         let p = Preferences.shared
@@ -92,6 +96,7 @@ struct IslandToast: Equatable {
     private var monitorsInstalled = false
 
     var isActive: Bool { panel != nil }
+    var currentScreen: NSScreen? { screen }
 
     func setup() {
         rebuild()
@@ -142,7 +147,7 @@ struct IslandToast: Equatable {
     }
 
     func track() {
-        guard let s = screen, let panel else { return }
+        guard let s = screen, let panel, !ClaudePanelController.shared.isVisible else { return }
         let p = NSEvent.mouseLocation
         if model.phase == .expanded {
             if !panel.frame.insetBy(dx: -12, dy: -12).contains(p) { collapse() }

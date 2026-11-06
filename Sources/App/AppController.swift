@@ -13,6 +13,10 @@ import AppKit
     @ObservationIgnored let privacy = PrivacyService()
     @ObservationIgnored let audio = AudioDeviceService()
     @ObservationIgnored let timer = TimerService()
+    @ObservationIgnored let clipboard = ClipboardService()
+    @ObservationIgnored let screenshots = ScreenshotWatcher()
+    @ObservationIgnored let downloads = DownloadsWatcher()
+    @ObservationIgnored let stats = SystemStats()
     @ObservationIgnored var onModeChange: (() -> Void)?
     @ObservationIgnored private var observer: AppearanceObserver?
     @ObservationIgnored private var rotationTimer: Timer?
@@ -28,8 +32,10 @@ import AppKit
             onAppearance: { AppController.shared.syncAppearance() },
             onEnvironment: { AppController.shared.reapply() })
         wallpaper.onApplied = { url, mode in AppController.shared.applied(url, mode) }
-        HotKeyManager.shared.action = { AppController.shared.toggle() }
-        HotKeyManager.shared.register(prefs.hotKey)
+        HotKeyManager.shared.setAction(id: 1) { AppController.shared.toggle() }
+        HotKeyManager.shared.setAction(id: 2) { ClaudePanelController.shared.toggle() }
+        HotKeyManager.shared.register(prefs.hotKey, id: 1)
+        HotKeyManager.shared.register(prefs.claudeHotKey, id: 2)
         island.setup()
         startActivities()
         reapply()
@@ -87,6 +93,27 @@ import AppKit
                                                          subtitle: level.map { "Pil %\($0)" } ?? "Bağlandı"))
         }
         audio.start()
+
+        clipboard.start()
+
+        screenshots.onNew = { u in
+            let c = AppController.shared
+            guard c.prefs.islandScreenshots else { return }
+            c.island.model.addToShelf(u)
+            c.island.show(IslandToast(icon: "camera.viewfinder", tint: .white, title: "Ekran görüntüsü", subtitle: "Raf'a eklendi",
+                                      image: Thumbnail.make(u, maxPixel: 160) ?? NSWorkspace.shared.icon(forFile: u.path)))
+        }
+        screenshots.start()
+
+        downloads.onNew = { u in
+            let c = AppController.shared
+            guard c.prefs.islandDownloads else { return }
+            c.island.model.addToShelf(u)
+            let img = ImageFiles.isImage(u) ? Thumbnail.make(u, maxPixel: 160) : nil
+            c.island.show(IslandToast(icon: "arrow.down.circle.fill", tint: .blue, title: u.lastPathComponent, subtitle: "İndirildi · Raf'ta",
+                                      image: img ?? NSWorkspace.shared.icon(forFile: u.path)))
+        }
+        downloads.start()
 
         timer.onFinish = { kind in
             let t: IslandToast = switch kind {

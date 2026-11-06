@@ -183,6 +183,8 @@ struct ExpandedView: View {
                     tab(.timer, "timer", "Zamanlayıcı")
                     tab(.calendar, "calendar", "Takvim")
                     tab(.shelf, "tray.fill", "Raf")
+                    tab(.clipboard, "doc.on.clipboard", "Pano")
+                    tab(.system, "gauge.with.dots.needle.33percent", "Sistem")
                 }
                 Spacer(minLength: model.hasNotch ? model.notch.width + 8 : 8)
                 HStack(spacing: 6) {
@@ -191,6 +193,12 @@ struct ExpandedView: View {
                         Image(systemName: b.symbol).foregroundStyle(b.charging ? .green : (b.percent <= 20 ? .red : .white))
                         Text("%\(b.percent)").font(.system(size: 11, weight: .medium)).monospacedDigit()
                     }
+                    Button { ClaudePanelController.shared.show() } label: {
+                        Image(systemName: "sparkle").font(.system(size: 12, weight: .semibold)).foregroundStyle(.orange)
+                            .frame(width: 22, height: 22).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Claude ile sohbet")
                     Button {
                         AppController.shared.island.collapse()
                         SettingsWindow.shared.show()
@@ -211,6 +219,8 @@ struct ExpandedView: View {
                 case .music: MusicPage(model: model)
                 case .timer: TimerPage()
                 case .shelf: ShelfPage(model: model)
+                case .clipboard: ClipboardPage()
+                case .system: SystemPage()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

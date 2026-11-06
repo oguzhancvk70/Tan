@@ -85,8 +85,28 @@ struct GeneralTab: View {
                     }
                 Toggle("Mikrofon / kamera göstergesi", isOn: $prefs.islandPrivacy)
                 Toggle("Kulaklık bağlantısı", isOn: $prefs.islandAudio)
+                Toggle("Pano geçmişi", isOn: $prefs.islandClipboard)
+                Toggle("Yeni ekran görüntülerini Raf'a ekle", isOn: $prefs.islandScreenshots)
+                Toggle("Biten indirmeleri Raf'a ekle", isOn: $prefs.islandDownloads)
                 Text("İmleç çentiğe gelince açılır: Ana, Müzik, Zamanlayıcı ve Raf sayfaları. Rafa dosya sürükleyip AirDrop ile gönderebilirsiniz.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Claude") {
+                LabeledContent("Sohbeti aç") { ShortcutRecorder(hotKey: $prefs.claudeHotKey, id: 2) }
+                LabeledContent("Çalışma klasörü") {
+                    HStack {
+                        Text((prefs.claudeFolder as NSString).abbreviatingWithTildeInPath).foregroundStyle(.secondary)
+                        Button("Seç…") {
+                            let o = NSOpenPanel()
+                            o.canChooseDirectories = true
+                            o.canChooseFiles = false
+                            if o.runModal() == .OK, let u = o.url { prefs.claudeFolder = u.path }
+                        }
+                    }
+                }
+                Toggle("Claude dosya düzenleyebilsin", isOn: $prefs.claudeEdits)
+                Text(ClaudeChat.binary() != nil ? "Claude Code bulundu; sohbet aboneliğinle çalışır." : "Claude Code bulunamadı. VS Code'da Claude Code eklentisi kurulu olmalı.")
+                    .font(.caption).foregroundStyle(ClaudeChat.binary() != nil ? Color.secondary : Color.orange)
             }
             Section("Rastgele Duvar Kâğıdı") {
                 TextField("Arama terimi (boş bırakılırsa hepsi)", text: $prefs.shuffleQuery)
@@ -104,6 +124,7 @@ struct GeneralTab: View {
 // kısayol kaydedici
 struct ShortcutRecorder: View {
     @Binding var hotKey: HotKey?
+    var id: UInt32 = 1
     @State private var recording = false
     @State private var monitor: Any?
 
@@ -112,7 +133,7 @@ struct ShortcutRecorder: View {
             Button(recording ? "Tuşlara basın…" : (hotKey?.display ?? "Yok")) { recording ? stop() : start() }
                 .frame(minWidth: 120)
             if hotKey != nil && !recording {
-                Button { hotKey = nil; HotKeyManager.shared.register(nil) } label: { Image(systemName: "xmark.circle.fill") }
+                Button { hotKey = nil; HotKeyManager.shared.register(nil, id: id) } label: { Image(systemName: "xmark.circle.fill") }
                     .buttonStyle(.borderless)
             }
         }
@@ -121,7 +142,7 @@ struct ShortcutRecorder: View {
 
     private func start() {
         recording = true
-        HotKeyManager.shared.unregister()
+        HotKeyManager.shared.unregister(id: id)
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
             if e.keyCode == 53 { stop(); return nil }
             let f = e.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -137,6 +158,6 @@ struct ShortcutRecorder: View {
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
         recording = false
-        HotKeyManager.shared.register(hotKey)
+        HotKeyManager.shared.register(hotKey, id: id)
     }
 }
