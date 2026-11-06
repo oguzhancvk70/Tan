@@ -12,7 +12,7 @@ settings:
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "Apple Development"
     ENABLE_HARDENED_RUNTIME: YES
-    MARKETING_VERSION: "1.0"
+    MARKETING_VERSION: "1.1"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   Tan:
@@ -21,6 +21,8 @@ targets:
     sources:
       - path: Sources
       - path: Resources/Assets.xcassets
+      - path: Resources/MediaRemoteAdapter.dylib
+        buildPhase: resources
     info:
       path: Resources/Info.plist
       properties:
@@ -29,12 +31,15 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.utilities
-        NSAppleEventsUsageDescription: "Tan, karanlık ve açık mod arasında geçiş yapmak için System Events'i kullanır."
+        NSAppleEventsUsageDescription: "Tan, karanlık/açık mod geçişi için System Events'i, müzik kontrolü için Spotify ve Müzik'i kullanır."
+        NSCalendarsFullAccessUsageDescription: "Tan, yaklaşan toplantıları dinamik adada göstermek için takviminizi okur."
+        NSBluetoothAlwaysUsageDescription: "Tan, bağlanan kulaklığın pil seviyesini göstermek için Bluetooth kullanır."
     entitlements:
       path: Resources/Tan.entitlements
       properties:
         com.apple.security.app-sandbox: false
         com.apple.security.automation.apple-events: true
+        com.apple.security.personal-information.calendars: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.oguzhan.Tan

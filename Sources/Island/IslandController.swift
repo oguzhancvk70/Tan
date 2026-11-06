@@ -1,45 +1,100 @@
 import AppKit
 import SwiftUI
 
+enum IslandPage: Hashable { case home, music, timer, shelf }
+enum LiveKind: Equatable { case meeting, timer, music }
+
+struct IslandToast: Equatable {
+    var icon: String
+    var tint: Color
+    var title: String
+    var subtitle: String?
+    var image: NSImage?
+    var rich: Bool { subtitle != nil || image != nil }
+}
+
 @MainActor @Observable final class IslandModel {
     enum Phase { case idle, toast, expanded }
     var phase: Phase = .idle
+    var page: IslandPage = .home
     var notch: CGSize = .zero
-    var icon = "moon.fill"
-    var text = ""
-    var tint: Color = .white
+    var toast = IslandToast(icon: "moon.fill", tint: .white, title: "")
     var thumb: NSImage?
     var subtitle = ""
     var isDark = false
+    var nowPlaying: NowPlaying?
+    var meeting: Meeting?
+    var mic = false
+    var cam = false
+    var battery: BatteryState?
+    var shelf: [URL] = []
 
+    static let wing: CGFloat = 78
     var hasNotch: Bool { notch.width > 0 }
+    var notchWidth: CGFloat { hasNotch ? notch.width : 0 }
     var barHeight: CGFloat { hasNotch ? notch.height : 30 }
-    var panelSize: CGSize { CGSize(width: max(notch.width + 300, 460), height: barHeight + 120) }
+    var topInset: CGFloat { hasNotch ? notch.height : 6 }
+    var panelSize: CGSize { CGSize(width: max(notchWidth + 360, 540), height: barHeight + 160) }
+
+    var live: LiveKind? {
+        let p = Preferences.shared
+        if p.islandCalendar, meeting != nil { return .meeting }
+        if AppController.shared.timer.isActive { return .timer }
+        if p.islandMusic, nowPlaying?.isPlaying == true { return .music }
+        return nil
+    }
+
+    var showDots: Bool { mic || cam }
 
     var shapeSize: CGSize {
         switch phase {
-        case .idle: hasNotch ? CGSize(width: notch.width - 6, height: notch.height - 2) : CGSize(width: 160, height: 0)
-        case .toast: CGSize(width: (hasNotch ? notch.width : 0) + 260, height: barHeight)
-        case .expanded: panelSize
+        case .idle:
+            if live != nil { return CGSize(width: hasNotch ? notchWidth + 2 * Self.wing : 230, height: barHeight) }
+            if showDots { return CGSize(width: hasNotch ? notchWidth + 52 : 70, height: barHeight) }
+            return hasNotch ? CGSize(width: notch.width - 6, height: notch.height - 2) : CGSize(width: 160, height: 0)
+        case .toast:
+            return toast.rich ? CGSize(width: max(notchWidth + 280, 380), height: topInset + 64)
+                              : CGSize(width: notchWidth + 260, height: barHeight)
+        case .expanded:
+            return panelSize
         }
     }
 
     var radius: CGFloat {
         switch phase {
-        case .idle: 8
-        case .toast: barHeight / 2
-        case .expanded: 24
+        case .idle: (live != nil || showDots) ? barHeight / 2 : 8
+        case .toast: toast.rich ? 22 : barHeight / 2
+        case .expanded: 26
+        }
+    }
+
+    var animKey: String { "\(phase)-\(String(describing: live))-\(showDots)-\(toast.rich)" }
+
+    func drop(_ providers: [NSItemProvider]) {
+        for p in providers {
+            _ = p.loadObject(ofClass: URL.self) { url, _ in
+                guard let url else { return }
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        let m = AppController.shared.island.model
+                        if !m.shelf.contains(url) { m.shelf.append(url) }
+                        m.page = .shelf
+                    }
+                }
+            }
         }
     }
 }
 
-// çentik üstündeki panel
+// çentik üstündeki panel (sadece ana ekran)
 @MainActor final class IslandController {
     let model = IslandModel()
     private var panel: NSPanel?
     private var screen: NSScreen?
     private var hideTask: Task<Void, Never>?
     private var monitorsInstalled = false
+
+    var isActive: Bool { panel != nil }
 
     func setup() {
         rebuild()
@@ -48,12 +103,12 @@ import SwiftUI
         _ = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { _ in
             MainActor.assumeIsolated { AppController.shared.island.track() }
         }
-        _ = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { e in
+        _ = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { e in
             MainActor.assumeIsolated { AppController.shared.island.track() }
             return e
         }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { _ in
-            Task { @MainActor in AppController.shared.island.rebuild() }
+            MainActor.assumeIsolated { AppController.shared.island.rebuild() }
         }
     }
 
@@ -94,15 +149,27 @@ import SwiftUI
         let p = NSEvent.mouseLocation
         if model.phase == .expanded {
             if !panel.frame.insetBy(dx: -12, dy: -12).contains(p) { collapse() }
-        } else {
-            let w = model.hasNotch ? model.notch.width : 200
-            let h = model.hasNotch ? model.notch.height : 4
-            if NSRect(x: s.frame.midX - w / 2, y: s.frame.maxY - h, width: w, height: h + 1).contains(p) { expand() }
+            return
+        }
+        let w = max(model.phase == .idle ? model.shapeSize.width : 0, model.hasNotch ? model.notch.width : 200)
+        let h = model.hasNotch ? model.notch.height : 4
+        if NSRect(x: s.frame.midX - w / 2, y: s.frame.maxY - h, width: w, height: h + 1).contains(p) {
+            expand(dragging: NSEvent.pressedMouseButtons & 1 != 0)
         }
     }
 
-    func expand() {
+    func expand(dragging: Bool = false) {
         hideTask?.cancel()
+        if dragging {
+            model.page = .shelf
+        } else if model.phase != .expanded {
+            switch model.live {
+            case .meeting: model.page = .home
+            case .timer: model.page = .timer
+            case .music: model.page = .music
+            case nil: model.page = .home
+            }
+        }
         model.phase = .expanded
         panel?.ignoresMouseEvents = false
     }
@@ -112,16 +179,15 @@ import SwiftUI
         panel?.ignoresMouseEvents = true
     }
 
-    func toast(icon: String, text: String, tint: Color) {
+    func show(_ t: IslandToast, seconds: Double? = nil) {
         guard panel != nil else { return }
-        model.icon = icon
-        model.text = text
-        model.tint = tint
+        model.toast = t
         guard model.phase != .expanded else { return }
         model.phase = .toast
         hideTask?.cancel()
+        let dur = seconds ?? (t.rich ? 3.5 : 2.4)
         hideTask = Task {
-            try? await Task.sleep(for: .seconds(2.4))
+            try? await Task.sleep(for: .seconds(dur))
             if !Task.isCancelled, model.phase == .toast { model.phase = .idle }
         }
     }

@@ -25,6 +25,10 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Tan, karanlık ve açık mod arasında geçiş yapmak için System Events'i kullanır.</string>
+	<string>Tan, karanlık/açık mod geçişi için System Events'i, müzik kontrolü için Spotify ve Müzik'i kullanır.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Tan, bağlanan kulaklığın pil seviyesini göstermek için Bluetooth kullanır.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Tan, yaklaşan toplantıları dinamik adada göstermek için takviminizi okur.</string>
 </dict>
 </plist>

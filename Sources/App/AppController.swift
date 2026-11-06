@@ -7,6 +7,12 @@ import AppKit
     @ObservationIgnored let prefs = Preferences.shared
     @ObservationIgnored let wallpaper = WallpaperManager()
     @ObservationIgnored let island = IslandController()
+    @ObservationIgnored let nowPlaying = NowPlayingService()
+    @ObservationIgnored let battery = BatteryService()
+    @ObservationIgnored let calendar = CalendarService()
+    @ObservationIgnored let privacy = PrivacyService()
+    @ObservationIgnored let audio = AudioDeviceService()
+    @ObservationIgnored let timer = TimerService()
     @ObservationIgnored var onModeChange: (() -> Void)?
     @ObservationIgnored private var observer: AppearanceObserver?
     @ObservationIgnored private var rotationTimer: Timer?
@@ -26,6 +32,7 @@ import AppKit
         HotKeyManager.shared.action = { AppController.shared.toggle() }
         HotKeyManager.shared.register(prefs.hotKey)
         island.setup()
+        startActivities()
         reapply()
         scheduleRotation()
         bingTimer = Timer.scheduledTimer(withTimeInterval: 3 * 3600, repeats: true) { _ in
@@ -42,8 +49,72 @@ import AppKit
         island.model.isDark = now
         onModeChange?()
         reapply()
-        island.toast(icon: now ? "moon.fill" : "sun.max.fill", text: now ? "Karanlık Mod" : "Açık Mod",
-                     tint: now ? .indigo : .yellow)
+        island.show(IslandToast(icon: now ? "moon.fill" : "sun.max.fill", tint: now ? .indigo : .yellow,
+                                title: now ? "Karanlık Mod" : "Açık Mod"))
+    }
+
+    // ada etkinlikleri
+    private func startActivities() {
+        nowPlaying.onChange = { np, changed in
+            let c = AppController.shared, m = c.island.model
+            m.nowPlaying = np
+            guard let np, c.prefs.islandMusic else { return }
+            if changed, np.isPlaying {
+                c.island.show(IslandToast(icon: "music.note", tint: .green, title: np.title,
+                                          subtitle: np.artist.isEmpty ? (np.appName ?? "") : np.artist, image: np.artwork))
+            } else if m.phase == .toast, m.toast.title == np.title, m.toast.image == nil, let art = np.artwork {
+                m.toast.image = art
+            }
+        }
+        nowPlaying.start()
+
+        battery.onChange = { new, old in AppController.shared.batteryChanged(new, old) }
+        battery.start()
+
+        calendar.onChange = { AppController.shared.island.model.meeting = $0 }
+        calendar.onAlert = { m, mins in
+            AppController.shared.island.show(IslandToast(icon: "calendar", tint: .red, title: m.title,
+                                                         subtitle: mins <= 0 ? "Şimdi başlıyor" : "\(mins) dk sonra başlıyor"), seconds: 6)
+        }
+        if prefs.islandCalendar { calendar.start() }
+
+        privacy.onChange = { mic, cam in
+            let m = AppController.shared.island.model
+            m.mic = mic
+            m.cam = cam
+        }
+        privacy.start()
+
+        audio.onConnect = { name, level in
+            guard AppController.shared.prefs.islandAudio else { return }
+            AppController.shared.island.show(IslandToast(icon: AudioDeviceService.symbol(for: name), tint: .white, title: name,
+                                                         subtitle: level.map { "Pil %\($0)" } ?? "Bağlandı"))
+        }
+        audio.start()
+
+        timer.onFinish = { kind in
+            let t: IslandToast = switch kind {
+            case .focus: IslandToast(icon: "brain.head.profile", tint: .orange, title: "Odak süresi bitti", subtitle: "5 dakika mola")
+            case .rest: IslandToast(icon: "cup.and.saucer.fill", tint: .green, title: "Mola bitti", subtitle: "Yeni odak başladı")
+            case .simple: IslandToast(icon: "timer", tint: .orange, title: "Süre doldu", subtitle: "Zamanlayıcı")
+            }
+            AppController.shared.island.show(t, seconds: 6)
+        }
+    }
+
+    private func batteryChanged(_ new: BatteryState, _ old: BatteryState?) {
+        island.model.battery = new
+        guard prefs.islandBattery, let old else { return }
+        let pct = "%\(new.percent)"
+        if new.onAC && !old.onAC {
+            island.show(IslandToast(icon: "battery.100percent.bolt", tint: .green, title: "Şarj oluyor", subtitle: pct))
+        } else if !new.onAC && old.onAC {
+            island.show(IslandToast(icon: new.symbol, tint: .white, title: "Pil · \(pct)"))
+        } else if !new.onAC, (new.percent <= 10 && old.percent > 10) || (new.percent <= 20 && old.percent > 20) {
+            island.show(IslandToast(icon: "battery.25percent", tint: .red, title: "Pil zayıf", subtitle: "\(pct) kaldı"), seconds: 5)
+        } else if new.onAC, new.percent == 100, old.percent < 100 {
+            island.show(IslandToast(icon: "battery.100percent", tint: .green, title: "Tam dolu"))
+        }
     }
 
     func toggle() {
@@ -95,12 +166,12 @@ import AppKit
 
     func shuffle() {
         Task {
-            island.toast(icon: "arrow.triangle.2.circlepath", text: "Aranıyor…", tint: .white)
+            island.show(IslandToast(icon: "arrow.triangle.2.circlepath", tint: .white, title: "Aranıyor…"))
             do {
                 let r = try await Wallhaven.search(query: prefs.shuffleQuery, sort: .random, page: 1, anime: prefs.includeAnime)
                 guard let w = r.items.first else { report("Sonuç bulunamadı. Arama terimini değiştirin."); return }
                 try await setOnline(w, for: [mode])
-                island.toast(icon: "sparkles", text: "Yeni duvar kâğıdı", tint: .mint)
+                island.show(IslandToast(icon: "sparkles", tint: .mint, title: "Yeni duvar kâğıdı"))
             } catch {
                 report(error.localizedDescription)
             }

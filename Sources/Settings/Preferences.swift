@@ -58,6 +58,11 @@ struct WallpaperChoice: Codable, Equatable {
     var rotation: RotationInterval { didSet { UserDefaults.standard.set(rotation.rawValue, forKey: "rotation") } }
     var bingTarget: BingTarget { didSet { UserDefaults.standard.set(bingTarget.rawValue, forKey: "bingTarget") } }
     var islandEnabled: Bool { didSet { UserDefaults.standard.set(islandEnabled, forKey: "islandEnabled") } }
+    var islandMusic: Bool { didSet { UserDefaults.standard.set(islandMusic, forKey: "islandMusic") } }
+    var islandBattery: Bool { didSet { UserDefaults.standard.set(islandBattery, forKey: "islandBattery") } }
+    var islandCalendar: Bool { didSet { UserDefaults.standard.set(islandCalendar, forKey: "islandCalendar") } }
+    var islandPrivacy: Bool { didSet { UserDefaults.standard.set(islandPrivacy, forKey: "islandPrivacy") } }
+    var islandAudio: Bool { didSet { UserDefaults.standard.set(islandAudio, forKey: "islandAudio") } }
     var shuffleQuery: String { didSet { UserDefaults.standard.set(shuffleQuery, forKey: "shuffleQuery") } }
     var includeAnime: Bool { didSet { UserDefaults.standard.set(includeAnime, forKey: "includeAnime") } }
     var hotKey: HotKey? {
@@ -72,7 +77,13 @@ struct WallpaperChoice: Codable, Equatable {
 
     init() {
         let d = UserDefaults.standard
-        d.register(defaults: ["dimAmount": 0.3, "islandEnabled": true, "rotation": 3600, "shuffleQuery": "landscape"])
+        d.register(defaults: ["dimAmount": 0.3, "islandEnabled": true, "rotation": 3600, "shuffleQuery": "landscape",
+                              "islandMusic": true, "islandBattery": true, "islandCalendar": true, "islandPrivacy": true, "islandAudio": true])
+        islandMusic = d.bool(forKey: "islandMusic")
+        islandBattery = d.bool(forKey: "islandBattery")
+        islandCalendar = d.bool(forKey: "islandCalendar")
+        islandPrivacy = d.bool(forKey: "islandPrivacy")
+        islandAudio = d.bool(forKey: "islandAudio")
         light = Self.load("wallpaper.light")
         dark = Self.load("wallpaper.dark")
         dimDark = d.bool(forKey: "dimDark")

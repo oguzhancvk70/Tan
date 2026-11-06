@@ -76,7 +76,16 @@ struct GeneralTab: View {
             Section("Dinamik Ada") {
                 Toggle("Dinamik adayı göster", isOn: $prefs.islandEnabled)
                     .onChange(of: prefs.islandEnabled) { AppController.shared.island.rebuild() }
-                Text("İmleç çentiğe (ya da ekranın üst ortasına) gelince açılır. Mod değişince kısa bir bildirim gösterir.")
+                Toggle("Şu an çalan (Spotify, Müzik, tarayıcı…)", isOn: $prefs.islandMusic)
+                Toggle("Pil ve şarj bildirimleri", isOn: $prefs.islandBattery)
+                Toggle("Takvim: yaklaşan toplantı", isOn: $prefs.islandCalendar)
+                    .onChange(of: prefs.islandCalendar) { _, on in
+                        if on { AppController.shared.calendar.start() }
+                        AppController.shared.calendar.refresh()
+                    }
+                Toggle("Mikrofon / kamera göstergesi", isOn: $prefs.islandPrivacy)
+                Toggle("Kulaklık bağlantısı", isOn: $prefs.islandAudio)
+                Text("İmleç çentiğe gelince açılır: Ana, Müzik, Zamanlayıcı ve Raf sayfaları. Rafa dosya sürükleyip AirDrop ile gönderebilirsiniz.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Rastgele Duvar Kâğıdı") {
