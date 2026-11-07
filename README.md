@@ -1,5 +1,12 @@
 # Tan
 
+[![Release](https://img.shields.io/github/v/release/oguzhancvk70/Tan?color=orange)](https://github.com/oguzhancvk70/Tan/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/oguzhancvk70/Tan/total?color=blue)](https://github.com/oguzhancvk70/Tan/releases)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)
+![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/oguzhancvk70/Tan?style=social)](https://github.com/oguzhancvk70/Tan/stargazers)
+
 **A Dynamic Island for your Mac's notch — plus automatic light/dark mode wallpapers, a Claude chat panel, clipboard history and live system stats.**
 
 Tan is a lightweight, native macOS menu bar app written in Swift and SwiftUI. It turns the notch on your MacBook into an interactive "island" that shows what's playing, your next meeting, battery and headphone status, recent screenshots and downloads, and detailed CPU / memory usage. It also switches your wallpaper when macOS changes between light and dark mode.
