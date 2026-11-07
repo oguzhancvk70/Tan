@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+  developmentLanguage: tr
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -14,6 +15,7 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "1.2"
     CURRENT_PROJECT_VERSION: "1"
+    SWIFT_EMIT_LOC_STRINGS: YES
 targets:
   Tan:
     type: application
@@ -21,6 +23,7 @@ targets:
     sources:
       - path: Sources
       - path: Resources/Assets.xcassets
+      - path: Resources/Localization
       - path: Resources/MediaRemoteAdapter.dylib
         buildPhase: resources
     info:

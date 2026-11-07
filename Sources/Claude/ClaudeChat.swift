@@ -47,7 +47,7 @@ import SwiftUI
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !running else { return }
         guard let bin = Self.binary() else {
-            messages.append(Message(role: .error, text: "Claude Code bulunamadı. VS Code'da Claude Code eklentisi kurulu olmalı."))
+            messages.append(Message(role: .error, text: L("Claude Code bulunamadı. VS Code'da Claude Code eklentisi kurulu olmalı.")))
             return
         }
         input = ""
@@ -55,13 +55,13 @@ import SwiftUI
         var prompt = text
         var args = ["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages"]
         if !files.isEmpty {
-            prompt += "\n\nEkli dosyalar:\n" + files.map { "- \($0.path)" }.joined(separator: "\n")
+            prompt += "\n\n" + L("Ekli dosyalar:") + "\n" + files.map { "- \($0.path)" }.joined(separator: "\n")
             for d in Set(files.map { $0.deletingLastPathComponent().path }) { args += ["--add-dir", d] }
         }
         if let sessionID { args += ["--resume", sessionID] }
         if Preferences.shared.claudeEdits { args += ["--permission-mode", "acceptEdits"] }
 
-        messages.append(Message(role: .user, text: files.isEmpty ? text : "\(text)\n📎 \(files.count) dosya"))
+        messages.append(Message(role: .user, text: files.isEmpty ? text : "\(text)\n📎 " + L("\(files.count) dosya")))
         files = []
         let reply = Message(role: .assistant, text: "")
         messages.append(reply)
@@ -106,7 +106,7 @@ import SwiftUI
             try? inp.fileHandleForWriting.close()
         } catch {
             running = false
-            setError("Claude başlatılamadı: \(error.localizedDescription)")
+            setError(L("Claude başlatılamadı: \(error.localizedDescription)"))
         }
     }
 
@@ -149,7 +149,7 @@ import SwiftUI
             }
         case "result":
             if o["is_error"] as? Bool == true {
-                setError(o["result"] as? String ?? "Claude bir hata döndürdü.")
+                setError(o["result"] as? String ?? L("Claude bir hata döndürdü."))
             } else if let i = index(), messages[i].text.isEmpty, let r = o["result"] as? String {
                 messages[i].text = r
             }
@@ -162,10 +162,10 @@ import SwiftUI
         running = false
         if let i = index(), messages[i].text.isEmpty {
             if code == 15 {
-                setError("Durduruldu.")
+                setError(L("Durduruldu."))
             } else {
                 let tail = errText.trimmingCharacters(in: .whitespacesAndNewlines)
-                setError(tail.isEmpty ? "Claude yanıt vermedi (kod \(code))." : String(tail.suffix(400)))
+                setError(tail.isEmpty ? L("Claude yanıt vermedi (kod \(code)).") : String(tail.suffix(400)))
             }
         }
         current = nil

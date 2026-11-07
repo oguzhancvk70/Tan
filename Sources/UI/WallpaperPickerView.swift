@@ -18,7 +18,7 @@ struct WallpapersTab: View {
                     Slider(value: $prefs.dimAmount, in: 0.05...0.6) { editing in
                         if !editing { AppController.shared.reapply() }
                     } label: {
-                        Text("Karartma: %\(Int(prefs.dimAmount * 100))")
+                        Text("Karartma: \(pct(Int(prefs.dimAmount * 100)))")
                     }
                 }
                 Picker("Klasör döngüsü", selection: $prefs.rotation) {
@@ -44,7 +44,7 @@ struct WallpaperCard: View {
         let _ = app.revision
         let choice = Preferences.shared.choice(for: mode)
         VStack(alignment: .leading, spacing: 8) {
-            Label(mode == .light ? "Açık Mod" : "Koyu Mod", systemImage: mode == .light ? "sun.max.fill" : "moon.fill")
+            Label(mode == .light ? L("Açık Mod") : L("Koyu Mod"), systemImage: mode == .light ? "sun.max.fill" : "moon.fill")
                 .font(.headline)
             LocalThumb(url: app.wallpaper.preview(mode))
                 .frame(height: 170)
@@ -56,11 +56,11 @@ struct WallpaperCard: View {
                     }
                 }
             HStack {
-                Text(choice.map { ($0.isFolder ? "Klasör: " : "") + $0.caption } ?? "Seçilmedi")
+                Text(choice.map { ($0.isFolder ? L("Klasör: ") : "") + $0.caption } ?? L("Seçilmedi"))
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 Spacer()
                 if let link = choice?.link.flatMap(URL.init(string:)) {
-                    Link(choice?.credit ?? "Kaynak", destination: link).font(.caption).lineLimit(1)
+                    Link(choice?.credit ?? L("Kaynak"), destination: link).font(.caption).lineLimit(1)
                 } else if let credit = choice?.credit {
                     Text(credit).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }

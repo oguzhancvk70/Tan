@@ -120,7 +120,7 @@ struct ClaudeChatView: View {
         .padding(.bottom, 14)
     }
 
-    private func iconButton(_ icon: String, _ help: String, _ action: @escaping () -> Void) -> some View {
+    private func iconButton(_ icon: String, _ help: LocalizedStringKey, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon).font(.system(size: 12, weight: .semibold))
                 .frame(width: 26, height: 26).contentShape(Rectangle())

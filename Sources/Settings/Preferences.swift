@@ -7,11 +7,11 @@ enum RotationInterval: Int, CaseIterable, Identifiable {
     var id: Int { rawValue }
     var title: String {
         switch self {
-        case .off: "Kapalı"
-        case .m15: "15 dakika"
-        case .h1: "1 saat"
-        case .h6: "6 saat"
-        case .d1: "Günde bir"
+        case .off: L("Kapalı")
+        case .m15: L("15 dakika")
+        case .h1: L("1 saat")
+        case .h6: L("6 saat")
+        case .d1: L("Günde bir")
         }
     }
 }
@@ -21,10 +21,10 @@ enum BingTarget: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .off: "Kapalı"
-        case .light: "Açık mod"
-        case .dark: "Koyu mod"
-        case .both: "İkisi"
+        case .off: L("Kapalı")
+        case .light: L("Açık mod")
+        case .dark: L("Koyu mod")
+        case .both: L("İkisi")
         }
     }
     var modes: [Mode] {

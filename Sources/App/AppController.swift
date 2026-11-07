@@ -12,7 +12,6 @@ import AppKit
     @ObservationIgnored let calendar = CalendarService()
     @ObservationIgnored let privacy = PrivacyService()
     @ObservationIgnored let audio = AudioDeviceService()
-    @ObservationIgnored let timer = TimerService()
     @ObservationIgnored let clipboard = ClipboardService()
     @ObservationIgnored let screenshots = ScreenshotWatcher()
     @ObservationIgnored let downloads = DownloadsWatcher()
@@ -76,7 +75,7 @@ import AppKit
         calendar.onChange = { AppController.shared.island.model.meeting = $0 }
         calendar.onAlert = { m, mins in
             AppController.shared.island.show(IslandToast(icon: "calendar", tint: .red, title: m.title,
-                                                         subtitle: mins <= 0 ? "Şimdi başlıyor" : "\(mins) dk sonra başlıyor"), seconds: 6)
+                                                         subtitle: mins <= 0 ? L("Şimdi başlıyor") : L("\(mins) dk sonra başlıyor")), seconds: 6)
         }
         if prefs.islandCalendar { calendar.start() }
 
@@ -90,7 +89,7 @@ import AppKit
         audio.onConnect = { name, level in
             guard AppController.shared.prefs.islandAudio else { return }
             AppController.shared.island.show(IslandToast(icon: AudioDeviceService.symbol(for: name), tint: .white, title: name,
-                                                         subtitle: level.map { "Pil %\($0)" } ?? "Bağlandı"))
+                                                         subtitle: level.map { L("Pil \(pct($0))") } ?? L("Bağlandı")))
         }
         audio.start()
 
@@ -100,7 +99,7 @@ import AppKit
             let c = AppController.shared
             guard c.prefs.islandScreenshots else { return }
             c.island.model.addToShelf(u)
-            c.island.show(IslandToast(icon: "camera.viewfinder", tint: .white, title: "Ekran görüntüsü", subtitle: "Raf'a eklendi",
+            c.island.show(IslandToast(icon: "camera.viewfinder", tint: .white, title: L("Ekran görüntüsü"), subtitle: L("Raf'a eklendi"),
                                       image: Thumbnail.make(u, maxPixel: 160) ?? NSWorkspace.shared.icon(forFile: u.path)))
         }
         screenshots.start()
@@ -110,33 +109,24 @@ import AppKit
             guard c.prefs.islandDownloads else { return }
             c.island.model.addToShelf(u)
             let img = ImageFiles.isImage(u) ? Thumbnail.make(u, maxPixel: 160) : nil
-            c.island.show(IslandToast(icon: "arrow.down.circle.fill", tint: .blue, title: u.lastPathComponent, subtitle: "İndirildi · Raf'ta",
+            c.island.show(IslandToast(icon: "arrow.down.circle.fill", tint: .blue, title: u.lastPathComponent, subtitle: L("İndirildi · Raf'ta"),
                                       image: img ?? NSWorkspace.shared.icon(forFile: u.path)))
         }
         downloads.start()
-
-        timer.onFinish = { kind in
-            let t: IslandToast = switch kind {
-            case .focus: IslandToast(icon: "brain.head.profile", tint: .orange, title: "Odak süresi bitti", subtitle: "5 dakika mola")
-            case .rest: IslandToast(icon: "cup.and.saucer.fill", tint: .green, title: "Mola bitti", subtitle: "Yeni odak başladı")
-            case .simple: IslandToast(icon: "timer", tint: .orange, title: "Süre doldu", subtitle: "Zamanlayıcı")
-            }
-            AppController.shared.island.show(t, seconds: 6)
-        }
     }
 
     private func batteryChanged(_ new: BatteryState, _ old: BatteryState?) {
         island.model.battery = new
         guard prefs.islandBattery, let old else { return }
-        let pct = "%\(new.percent)"
+        let p = pct(new.percent)
         if new.onAC && !old.onAC {
-            island.show(IslandToast(icon: "battery.100percent.bolt", tint: .green, title: "Şarj oluyor", subtitle: pct))
+            island.show(IslandToast(icon: "battery.100percent.bolt", tint: .green, title: L("Şarj oluyor"), subtitle: p))
         } else if !new.onAC && old.onAC {
-            island.show(IslandToast(icon: new.symbol, tint: .white, title: "Pil · \(pct)"))
+            island.show(IslandToast(icon: new.symbol, tint: .white, title: L("Pil · \(p)")))
         } else if !new.onAC, (new.percent <= 10 && old.percent > 10) || (new.percent <= 20 && old.percent > 20) {
-            island.show(IslandToast(icon: "battery.25percent", tint: .red, title: "Pil zayıf", subtitle: "\(pct) kaldı"), seconds: 5)
+            island.show(IslandToast(icon: "battery.25percent", tint: .red, title: L("Pil zayıf"), subtitle: L("\(p) kaldı")), seconds: 5)
         } else if new.onAC, new.percent == 100, old.percent < 100 {
-            island.show(IslandToast(icon: "battery.100percent", tint: .green, title: "Tam dolu"))
+            island.show(IslandToast(icon: "battery.100percent", tint: .green, title: L("Tam dolu")))
         }
     }
 
@@ -186,12 +176,12 @@ import AppKit
 
     func shuffle() {
         Task {
-            island.show(IslandToast(icon: "arrow.triangle.2.circlepath", tint: .white, title: "Aranıyor…"))
+            island.show(IslandToast(icon: "arrow.triangle.2.circlepath", tint: .white, title: L("Aranıyor…")))
             do {
                 let r = try await Wallhaven.search(query: prefs.shuffleQuery, sort: .random, page: 1, anime: prefs.includeAnime)
-                guard let w = r.items.first else { report("Sonuç bulunamadı. Arama terimini değiştirin."); return }
+                guard let w = r.items.first else { report(L("Sonuç bulunamadı. Arama terimini değiştirin.")); return }
                 try await setOnline(w, for: [mode])
-                island.show(IslandToast(icon: "sparkles", tint: .mint, title: "Yeni duvar kâğıdı"))
+                island.show(IslandToast(icon: "sparkles", tint: .mint, title: L("Yeni duvar kâğıdı")))
             } catch {
                 report(error.localizedDescription)
             }

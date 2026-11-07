@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-enum IslandPage: Hashable { case music, timer, calendar, shelf, clipboard, system }
-enum LiveKind: Equatable { case meeting, timer, music }
+enum IslandPage: Hashable { case music, calendar, shelf, clipboard, system }
+enum LiveKind: Equatable { case meeting, music }
 
 struct IslandToast: Equatable {
     var icon: String
@@ -25,13 +25,25 @@ struct IslandToast: Equatable {
     var cam = false
     var battery: BatteryState?
     var shelf: [URL] = []
+    var devices: [AirDevice] = []
+    var systemDetails = UserDefaults.standard.bool(forKey: "islandSystemDetails") {
+        didSet { UserDefaults.standard.set(systemDetails, forKey: "islandSystemDetails") }
+    }
 
     static let wing: CGFloat = 78
     var hasNotch: Bool { notch.width > 0 }
     var notchWidth: CGFloat { hasNotch ? notch.width : 0 }
     var barHeight: CGFloat { hasNotch ? notch.height : 30 }
     var topInset: CGFloat { hasNotch ? notch.height : 6 }
-    var panelSize: CGSize { CGSize(width: max(notchWidth + 440, 620), height: barHeight + 160) }
+    var panelSize: CGSize { CGSize(width: max(notchWidth + 440, 620), height: barHeight + 250) }
+    var expandedSize: CGSize {
+        let h: CGFloat = switch page {
+        case .system: systemDetails ? 250 : 160
+        case .shelf: 200
+        default: 160
+        }
+        return CGSize(width: panelSize.width, height: barHeight + h)
+    }
 
     func addToShelf(_ u: URL) {
         if !shelf.contains(u) { shelf.append(u) }
@@ -40,7 +52,6 @@ struct IslandToast: Equatable {
     var live: LiveKind? {
         let p = Preferences.shared
         if p.islandCalendar, meeting != nil { return .meeting }
-        if AppController.shared.timer.isActive { return .timer }
         if p.islandMusic, nowPlaying?.isPlaying == true { return .music }
         return nil
     }
@@ -57,7 +68,7 @@ struct IslandToast: Equatable {
             return toast.rich ? CGSize(width: max(notchWidth + 280, 380), height: topInset + 64)
                               : CGSize(width: notchWidth + 260, height: barHeight)
         case .expanded:
-            return panelSize
+            return expandedSize
         }
     }
 
@@ -69,7 +80,7 @@ struct IslandToast: Equatable {
         }
     }
 
-    var animKey: String { "\(phase)-\(String(describing: live))-\(showDots)-\(toast.rich)" }
+    var animKey: String { "\(phase)-\(String(describing: live))-\(showDots)-\(toast.rich)-\(page)-\(systemDetails)" }
 
     func drop(_ providers: [NSItemProvider]) {
         for p in providers {
@@ -147,10 +158,12 @@ struct IslandToast: Equatable {
     }
 
     func track() {
-        guard let s = screen, let panel, !ClaudePanelController.shared.isVisible else { return }
+        guard let s = screen, panel != nil, !ClaudePanelController.shared.isVisible else { return }
         let p = NSEvent.mouseLocation
         if model.phase == .expanded {
-            if !panel.frame.insetBy(dx: -12, dy: -12).contains(p) { collapse() }
+            let sz = model.shapeSize
+            let r = NSRect(x: s.frame.midX - sz.width / 2, y: s.frame.maxY - sz.height, width: sz.width, height: sz.height)
+            if !r.insetBy(dx: -12, dy: -12).contains(p) { collapse() }
             return
         }
         let w = max(model.phase == .idle ? model.shapeSize.width : 0, model.hasNotch ? model.notch.width : 200)
@@ -167,7 +180,6 @@ struct IslandToast: Equatable {
         } else if model.phase != .expanded {
             switch model.live {
             case .meeting: model.page = .calendar
-            case .timer: model.page = .timer
             case .music: model.page = .music
             case nil: model.page = .music
             }

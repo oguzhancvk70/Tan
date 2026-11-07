@@ -104,7 +104,7 @@ struct Meeting: Equatable {
             .sorted { $0.startDate < $1.startDate }
             .first { $0.startDate.timeIntervalSince(now) <= 600 && now.timeIntervalSince($0.startDate) < 600 }
         let m = next.map { e in
-            Meeting(id: e.eventIdentifier ?? e.title ?? "", title: e.title ?? "Etkinlik", start: e.startDate, end: e.endDate, url: Self.link(e))
+            Meeting(id: e.eventIdentifier ?? e.title ?? "", title: e.title ?? L("Etkinlik"), start: e.startDate, end: e.endDate, url: Self.link(e))
         }
         if m != meeting {
             meeting = m
@@ -279,71 +279,5 @@ struct Meeting: Equatable {
         if let v = val("batteryPercentSingle") ?? val("batteryPercentCombined") { return v }
         let lr = [val("batteryPercentLeft"), val("batteryPercentRight")].compactMap { $0 }
         return lr.min()
-    }
-}
-
-// zamanlayıcı / pomodoro
-@MainActor @Observable final class TimerService {
-    enum Kind { case simple, focus, rest }
-    var end: Date?
-    var paused: TimeInterval?
-    var total: TimeInterval = 0
-    var kind: Kind = .simple
-    var pomodoro = false
-    @ObservationIgnored var onFinish: ((Kind) -> Void)?
-    @ObservationIgnored private var tick: Timer?
-
-    var isActive: Bool { end != nil || paused != nil }
-    var isRunning: Bool { end != nil }
-
-    func remaining(at d: Date = .now) -> TimeInterval {
-        if let end { return max(0, end.timeIntervalSince(d)) }
-        return paused ?? 0
-    }
-
-    func start(minutes: Double, kind: Kind = .simple, pomodoro: Bool = false) {
-        total = minutes * 60
-        self.kind = kind
-        self.pomodoro = pomodoro
-        paused = nil
-        end = Date().addingTimeInterval(total)
-        schedule()
-    }
-
-    func pauseResume() {
-        if let end {
-            paused = max(0, end.timeIntervalSinceNow)
-            self.end = nil
-            tick?.invalidate()
-        } else if let p = paused {
-            end = Date().addingTimeInterval(p)
-            paused = nil
-            schedule()
-        }
-    }
-
-    func stop() {
-        end = nil
-        paused = nil
-        pomodoro = false
-        tick?.invalidate()
-    }
-
-    private func schedule() {
-        tick?.invalidate()
-        guard let end else { return }
-        tick = Timer.scheduledTimer(withTimeInterval: max(0, end.timeIntervalSinceNow), repeats: false) { _ in
-            MainActor.assumeIsolated { AppController.shared.timer.finish() }
-        }
-    }
-
-    private func finish() {
-        let k = kind
-        end = nil
-        paused = nil
-        NSSound(named: "Glass")?.play()
-        onFinish?(k)
-        guard pomodoro else { return }
-        if k == .focus { start(minutes: 5, kind: .rest, pomodoro: true) } else { start(minutes: 25, kind: .focus, pomodoro: true) }
     }
 }

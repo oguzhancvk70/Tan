@@ -18,7 +18,7 @@ struct GalleryView: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Picker("", selection: $src) { ForEach(Src.allCases, id: \.self) { Text($0.rawValue) } }
+                Picker("", selection: $src) { ForEach(Src.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)) } }
                     .pickerStyle(.segmented).labelsHidden().frame(width: 300)
                 Spacer()
                 if src == .wallhaven {
@@ -128,7 +128,7 @@ struct OnlineCell: View {
         }
     }
 
-    private func btn(_ icon: String, _ modes: [Mode], _ help: String) -> some View {
+    private func btn(_ icon: String, _ modes: [Mode], _ help: LocalizedStringKey) -> some View {
         Button { onSet(modes) } label: { Image(systemName: icon).frame(width: 28, height: 22) }
             .buttonStyle(.borderless)
             .help(help)

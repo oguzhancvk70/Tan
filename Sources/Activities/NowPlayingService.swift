@@ -146,7 +146,7 @@ enum MediaCommand: Int { case playPause = 2, next = 4, previous = 5 }
         let durMs = info[spotify ? "Duration" : "Total Time"] as? Double ?? 0
         var np = NowPlaying(title: title, artist: info["Artist"] as? String ?? "", duration: durMs / 1000,
                             elapsed: info["Playback Position"] as? Double ?? 0, stamp: Date(), isPlaying: state == "Playing",
-                            appName: spotify ? "Spotify" : "Müzik", bundleID: spotify ? "com.spotify.client" : "com.apple.Music",
+                            appName: spotify ? "Spotify" : L("Müzik"), bundleID: spotify ? "com.spotify.client" : "com.apple.Music",
                             artwork: nil, source: source)
         if script?.key == np.key { np.artwork = script?.artwork }
         if !remoteAlive {

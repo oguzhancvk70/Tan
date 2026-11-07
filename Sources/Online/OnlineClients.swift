@@ -20,8 +20,8 @@ enum OnlineError: LocalizedError {
     case rateLimited, status(Int)
     var errorDescription: String? {
         switch self {
-        case .rateLimited: "Çok fazla istek gönderildi. Bir dakika sonra tekrar deneyin."
-        case .status(let c): "Sunucu hatası (\(c))."
+        case .rateLimited: L("Çok fazla istek gönderildi. Bir dakika sonra tekrar deneyin.")
+        case .status(let c): L("Sunucu hatası (\(c)).")
         }
     }
 }
@@ -52,10 +52,10 @@ enum WallhavenSort: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .toplist: "Popüler"
-        case .favorites: "En çok beğenilen"
-        case .date_added: "En yeni"
-        case .random: "Rastgele"
+        case .toplist: L("Popüler")
+        case .favorites: L("En çok beğenilen")
+        case .date_added: L("En yeni")
+        case .random: L("Rastgele")
         }
     }
 }
@@ -97,7 +97,7 @@ enum Bing {
     private struct Img: Decodable { let startdate: String; let urlbase: String; let copyright: String; let copyrightlink: String?; let title: String? }
 
     static func latest(count: Int = 8) async throws -> [OnlineWallpaper] {
-        let url = URL(string: "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=\(count)&mkt=tr-TR")!
+        let url = URL(string: "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=\(count)&mkt=\(AppLanguage.isEnglish ? "en-US" : "tr-TR")")!
         let r = try JSONDecoder().decode(Response.self, from: try await Net.get(url))
         return r.images.compactMap { i in
             let base = "https://www.bing.com" + i.urlbase

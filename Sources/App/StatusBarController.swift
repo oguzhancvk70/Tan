@@ -34,18 +34,18 @@ import AppKit
         let m = NSMenu()
         m.addItem(modeSwitchItem())
         m.addItem(.separator())
-        m.addItem(item("Rastgele Duvar Kâğıdı", #selector(shuffle)))
+        m.addItem(item(L("Rastgele Duvar Kâğıdı"), #selector(shuffle)))
         if Preferences.shared.choice(for: app.mode)?.isFolder == true {
-            m.addItem(item("Klasörde Sonraki", #selector(next)))
+            m.addItem(item(L("Klasörde Sonraki"), #selector(next)))
         }
-        m.addItem(item("Galeri…", #selector(gallery)))
+        m.addItem(item(L("Galeri…"), #selector(gallery)))
         m.addItem(.separator())
-        let claude = item("Claude ile Sohbet" + (Preferences.shared.claudeHotKey.map { "  \($0.display)" } ?? ""), #selector(claudeChat))
+        let claude = item(L("Claude ile Sohbet") + (Preferences.shared.claudeHotKey.map { "  \($0.display)" } ?? ""), #selector(claudeChat))
         claude.image = NSImage(systemSymbolName: "sparkle", accessibilityDescription: nil)
         m.addItem(claude)
         m.addItem(.separator())
-        m.addItem(item("Ayarlar…", #selector(settings), key: ","))
-        m.addItem(item("Çıkış", #selector(quit), key: "q"))
+        m.addItem(item(L("Ayarlar…"), #selector(settings), key: ","))
+        m.addItem(item(L("Çıkış"), #selector(quit), key: "q"))
         return m
     }
 
@@ -63,7 +63,7 @@ import AppKit
         let icon = NSImageView(frame: NSRect(x: 14, y: 8, width: 16, height: 16))
         icon.image = NSImage(systemSymbolName: app.isDark ? "moon.fill" : "sun.max.fill", accessibilityDescription: nil)
         icon.contentTintColor = .labelColor
-        let label = NSTextField(labelWithString: "Karanlık Mod")
+        let label = NSTextField(labelWithString: L("Karanlık Mod"))
         label.font = .menuFont(ofSize: 0)
         label.frame = NSRect(x: 38, y: 7, width: 120, height: 18)
         let sw = NSSwitch(frame: NSRect(x: 172, y: 5, width: 44, height: 22))

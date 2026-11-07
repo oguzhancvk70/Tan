@@ -1,5 +1,6 @@
 import AppKit
 import Darwin
+import IOBluetooth
 
 // pano geçmişi
 @MainActor @Observable final class ClipboardService {
@@ -12,7 +13,7 @@ import Darwin
 
         var preview: String {
             if let text { return text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ") }
-            if image != nil { return "Görsel" }
+            if image != nil { return L("Görsel") }
             return files.map(\.lastPathComponent).joined(separator: ", ")
         }
 
@@ -147,10 +148,124 @@ import Darwin
     var up: Double = 0
     var diskFree: Double = 0
     var diskTotal: Double = 0
+    var procCPU: [ProcUsage] = []
+    var procMem: [ProcUsage] = []
+    var issues: [SysIssue] = []
 
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var prevCPU: host_cpu_load_info?
     @ObservationIgnored private var prevNet: (UInt64, UInt64, Date)?
+    @ObservationIgnored private var detailed = false
+    @ObservationIgnored private var busy = false
+    @ObservationIgnored private var lastScan = Date.distantPast
+    @ObservationIgnored private var reports: [SysIssue] = []
+
+    func setDetailed(_ v: Bool) {
+        detailed = v
+        if v { refreshDetails() }
+    }
+
+    // süreç listesi + hata raporları (arka planda)
+    private func refreshDetails() {
+        guard detailed, !busy else { return }
+        busy = true
+        let scan = Date().timeIntervalSince(lastScan) > 30
+        if scan { lastScan = Date() }
+        Task.detached(priority: .utility) {
+            let procs = SystemStats.processes()
+            let reps = scan ? SystemStats.diagnosticReports() : nil
+            await MainActor.run {
+                let s = AppController.shared.stats
+                s.busy = false
+                s.procCPU = Array(procs.sorted { $0.cpu > $1.cpu }.prefix(5))
+                s.procMem = Array(procs.sorted { $0.mem > $1.mem }.prefix(5))
+                if let reps { s.reports = reps }
+                s.issues = SystemStats.liveIssues() + s.reports
+            }
+        }
+    }
+
+    nonisolated static func processes() -> [ProcUsage] {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/ps")
+        p.arguments = ["-Aceo", "pcpu=,rss=,comm="]
+        p.environment = ["LC_ALL": "C"]
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        p.standardError = FileHandle.nullDevice
+        guard (try? p.run()) != nil else { return [] }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        var map: [String: (Double, Double)] = [:]
+        for line in String(decoding: data, as: UTF8.self).split(separator: "\n") {
+            let f = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+            guard f.count == 3, let c = Double(f[0]), let r = Double(f[1]) else { continue }
+            var name = String(f[2])
+            if let h = name.range(of: " Helper") { name = String(name[..<h.lowerBound]) }
+            let v = map[name, default: (0, 0)]
+            map[name] = (v.0 + c, v.1 + r * 1024)
+        }
+        return map.map { ProcUsage(name: $0.key, cpu: $0.value.0, mem: $0.value.1) }
+    }
+
+    // son 24 saatin çökme / donma / kaynak raporları
+    nonisolated static func diagnosticReports() -> [SysIssue] {
+        let fm = FileManager.default
+        let dirs = [fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/DiagnosticReports"),
+                    URL(fileURLWithPath: "/Library/Logs/DiagnosticReports")]
+        let exts: Set<String> = ["ips", "crash", "hang", "spin", "diag", "panic", "cpu_resource", "wakeups_resource", "diskwrites_resource"]
+        let since = Date().addingTimeInterval(-86400)
+        var out: [SysIssue] = []
+        for d in dirs {
+            let files = (try? fm.contentsOfDirectory(at: d, includingPropertiesForKeys: [.contentModificationDateKey], options: .skipsHiddenFiles)) ?? []
+            for f in files where exts.contains(f.pathExtension) {
+                guard let date = try? f.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate, date > since else { continue }
+                let file = f.lastPathComponent
+                var name = f.deletingPathExtension().lastPathComponent
+                if let r = name.range(of: #"[-_.]\d{4}-\d{2}-\d{2}"#, options: .regularExpression) { name = String(name[..<r.lowerBound]) }
+                if let u = name.range(of: "_") { name = String(name[u.upperBound...]) }
+                var bug = ""
+                if f.pathExtension == "ips", let h = try? FileHandle(forReadingFrom: f) {
+                    let head = h.readData(ofLength: 4096)
+                    try? h.close()
+                    if let line = String(decoding: head, as: UTF8.self).split(separator: "\n").first,
+                       let j = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any] {
+                        bug = j["bug_type"] as? String ?? ""
+                        if let n = (j["app_name"] ?? j["name"]) as? String, !n.isEmpty { name = n }
+                    }
+                }
+                out.append(SysIssue(id: f.path, title: name, detail: kind(f.pathExtension, bug, file), date: date, url: f))
+            }
+        }
+        return out.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
+    }
+
+    nonisolated private static func kind(_ ext: String, _ bug: String, _ file: String) -> String {
+        if ext == "panic" || bug == "210" || file.lowercased().contains("panic") { return L("Çekirdek paniği") }
+        if file.hasPrefix("JetsamEvent") { return L("Bellek yetersizliği") }
+        if ext == "hang" || ext == "spin" { return L("Yanıt vermedi") }
+        if ext == "cpu_resource" { return L("Aşırı CPU") }
+        if ext == "diskwrites_resource" { return L("Aşırı disk yazımı") }
+        if ext == "wakeups_resource" || bug == "385" { return L("Kaynak aşımı") }
+        if ext == "crash" || bug == "309" || bug == "109" { return L("Çöktü") }
+        return L("Hata raporu")
+    }
+
+    // anlık uyarılar: ısınma, bellek baskısı
+    static func liveIssues() -> [SysIssue] {
+        var out: [SysIssue] = []
+        switch ProcessInfo.processInfo.thermalState {
+        case .serious: out.append(SysIssue(id: "thermal", title: L("Isınma"), detail: L("Performans kısılıyor"), date: nil, url: nil))
+        case .critical: out.append(SysIssue(id: "thermal", title: L("Aşırı ısınma"), detail: L("Kritik"), date: nil, url: nil))
+        default: break
+        }
+        var lvl: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        if sysctlbyname("kern.memorystatus_vm_pressure_level", &lvl, &size, nil, 0) == 0, lvl >= 2 {
+            out.append(SysIssue(id: "pressure", title: L("Bellek baskısı"), detail: lvl >= 4 ? L("Kritik") : L("Yüksek"), date: nil, url: nil))
+        }
+        return out
+    }
 
     func start() {
         guard timer == nil else { return }
@@ -225,5 +340,70 @@ import Darwin
             diskFree = Double(v.volumeAvailableCapacityForImportantUsage ?? 0)
             diskTotal = Double(v.volumeTotalCapacity ?? 0)
         }
+
+        refreshDetails()
     }
+}
+
+struct ProcUsage: Identifiable {
+    let name: String
+    let cpu: Double
+    let mem: Double
+    var id: String { name }
+}
+
+struct SysIssue: Identifiable {
+    let id: String
+    let title: String
+    let detail: String
+    let date: Date?
+    let url: URL?
+}
+
+// AirDrop: eşleşmiş cihazlar
+struct AirDevice: Identifiable {
+    let id: String
+    let name: String
+    let symbol: String
+}
+
+@MainActor enum AirDrop {
+    static func devices() -> [AirDevice] {
+        let all = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? []
+        return all.compactMap { d in
+            guard [1, 2].contains(d.deviceClassMajor), let name = d.name, let addr = d.addressString else { return nil }
+            let n = name.lowercased()
+            let sym = d.deviceClassMajor == 2 ? "iphone"
+                : n.contains("ipad") ? "ipad"
+                : n.contains("imac") ? "desktopcomputer"
+                : n.contains("mini") || n.contains("studio") ? "macmini"
+                : "laptopcomputer"
+            return AirDevice(id: addr, name: name, symbol: sym)
+        }
+    }
+
+    static func send(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        NSSharingService(named: .sendViaAirDrop)?.perform(withItems: urls)
+    }
+
+    static func receive(_ providers: [NSItemProvider]) {
+        let group = DispatchGroup()
+        let box = URLBox()
+        for p in providers {
+            group.enter()
+            _ = p.loadObject(ofClass: URL.self) { url, _ in
+                if let url { box.append(url) }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) { MainActor.assumeIsolated { send(box.urls) } }
+    }
+}
+
+private final class URLBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var urls: [URL] = []
+    func append(_ u: URL) { lock.lock(); urls.append(u); lock.unlock() }
 }

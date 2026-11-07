@@ -44,7 +44,6 @@ struct IslandView: View {
 struct CompactLive: View {
     let model: IslandModel
     let live: LiveKind
-    private var timer: TimerService { AppController.shared.timer }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -62,7 +61,6 @@ struct CompactLive: View {
     @ViewBuilder private var left: some View {
         switch live {
         case .music: ArtworkView(image: model.nowPlaying?.artwork, size: 20, radius: 5)
-        case .timer: Image(systemName: "timer").foregroundStyle(timer.kind == .rest ? .green : .orange)
         case .meeting: Image(systemName: "calendar").foregroundStyle(.red)
         }
     }
@@ -71,11 +69,6 @@ struct CompactLive: View {
         switch live {
         case .music:
             EqualizerBars(playing: model.nowPlaying?.isPlaying == true).frame(width: 20, height: 14)
-        case .timer:
-            TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                Text(clock(timer.remaining(at: ctx.date))).monospacedDigit()
-                    .foregroundStyle(timer.isRunning ? .white : .secondary)
-            }
         case .meeting:
             TimelineView(.periodic(from: .now, by: 15)) { ctx in
                 Text(meetingText(model.meeting, ctx.date))
@@ -87,7 +80,7 @@ struct CompactLive: View {
 func meetingText(_ m: Meeting?, _ now: Date) -> String {
     guard let m else { return "" }
     let mins = Int(ceil(m.start.timeIntervalSince(now) / 60))
-    return mins > 0 ? "\(mins) dk" : "Şimdi"
+    return mins > 0 ? L("\(mins) dk") : L("Şimdi")
 }
 
 struct PrivacyDots: View {
@@ -180,7 +173,6 @@ struct ExpandedView: View {
             HStack(spacing: 0) {
                 HStack(spacing: 2) {
                     tab(.music, "music.note", "Müzik")
-                    tab(.timer, "timer", "Zamanlayıcı")
                     tab(.calendar, "calendar", "Takvim")
                     tab(.shelf, "tray.fill", "Raf")
                     tab(.clipboard, "doc.on.clipboard", "Pano")
@@ -191,7 +183,7 @@ struct ExpandedView: View {
                     PrivacyDots(model: model)
                     if let b = model.battery {
                         Image(systemName: b.symbol).foregroundStyle(b.charging ? .green : (b.percent <= 20 ? .red : .white))
-                        Text("%\(b.percent)").font(.system(size: 11, weight: .medium)).monospacedDigit()
+                        Text(pct(b.percent)).font(.system(size: 11, weight: .medium)).monospacedDigit()
                     }
                     Button { ClaudePanelController.shared.show() } label: {
                         Image(systemName: "sparkle").font(.system(size: 12, weight: .semibold)).foregroundStyle(.orange)
@@ -217,10 +209,9 @@ struct ExpandedView: View {
                 switch model.page {
                 case .calendar: CalendarPage(model: model)
                 case .music: MusicPage(model: model)
-                case .timer: TimerPage()
                 case .shelf: ShelfPage(model: model)
                 case .clipboard: ClipboardPage()
-                case .system: SystemPage()
+                case .system: SystemPage(model: model)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -231,7 +222,7 @@ struct ExpandedView: View {
         .foregroundStyle(.white)
     }
 
-    private func tab(_ p: IslandPage, _ icon: String, _ help: String) -> some View {
+    private func tab(_ p: IslandPage, _ icon: String, _ help: LocalizedStringKey) -> some View {
         Button { model.page = p } label: {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .semibold))
@@ -290,7 +281,7 @@ struct MusicPage: View {
             HStack(spacing: 16) {
                 Button { np.openSourceApp() } label: { ArtworkView(image: n.artwork, size: 100, radius: 14) }
                     .buttonStyle(.plain)
-                    .help("\(n.appName ?? "Uygulama") uygulamasını aç")
+                    .help(L("\(n.appName ?? L("Uygulama")) uygulamasını aç"))
                 VStack(alignment: .leading, spacing: 6) {
                     Text(n.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
                     Text(n.artist.isEmpty ? (n.appName ?? "") : n.artist).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
@@ -341,98 +332,66 @@ struct MusicPage: View {
     }
 }
 
-struct TimerPage: View {
-    private var timer: TimerService { AppController.shared.timer }
-
-    var body: some View {
-        if timer.isActive {
-            HStack(spacing: 18) {
-                TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                    let r = timer.remaining(at: ctx.date)
-                    ZStack {
-                        Circle().stroke(.white.opacity(0.15), lineWidth: 6)
-                        Circle()
-                            .trim(from: 0, to: timer.total > 0 ? r / timer.total : 0)
-                            .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                        Text(clock(r)).font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
-                    }
-                    .frame(width: 92, height: 92)
-                }
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(label).font(.system(size: 14, weight: .semibold))
-                    HStack(spacing: 10) {
-                        IslandButton(icon: timer.isRunning ? "pause.fill" : "play.fill", help: timer.isRunning ? "Duraklat" : "Devam") { timer.pauseResume() }
-                        IslandButton(icon: "stop.fill", help: "Durdur") { timer.stop() }
-                    }
-                }
-                Spacer()
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Zamanlayıcı").font(.system(size: 14, weight: .semibold))
-                HStack(spacing: 8) {
-                    preset("1 dk", 1); preset("5 dk", 5); preset("10 dk", 10); preset("30 dk", 30); preset("1 sa", 60)
-                }
-                Button { timer.start(minutes: 25, kind: .focus, pomodoro: true) } label: {
-                    Label("Pomodoro (25 dk odak + 5 dk mola)", systemImage: "brain.head.profile")
-                        .font(.system(size: 12, weight: .medium))
-                        .padding(.horizontal, 12).padding(.vertical, 7)
-                        .background(Capsule().fill(.orange.opacity(0.25)))
-                }
-                .buttonStyle(.plain)
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var tint: Color { timer.kind == .rest ? .green : .orange }
-    private var label: String {
-        switch timer.kind {
-        case .simple: "Zamanlayıcı"
-        case .focus: "Odak"
-        case .rest: "Mola"
-        }
-    }
-
-    private func preset(_ title: String, _ min: Double) -> some View {
-        Button { timer.start(minutes: min) } label: {
-            Text(title).font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 12).padding(.vertical, 7)
-                .background(Capsule().fill(.white.opacity(0.12)))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 struct ShelfPage: View {
     @Bindable var model: IslandModel
 
     var body: some View {
-        if model.shelf.isEmpty {
-            VStack(spacing: 6) {
-                Image(systemName: "tray.and.arrow.down.fill").font(.system(size: 26))
-                Text("Dosyaları buraya sürükleyin").font(.system(size: 12))
-            }
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [5])))
-        } else {
-            HStack(spacing: 12) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(model.shelf, id: \.self) { u in FileChip(url: u) }
-                    }
+        VStack(spacing: 10) {
+            // AirDrop cihaz kutucukları
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(model.devices) { DeviceBox(name: $0.name, symbol: $0.symbol, shelf: model.shelf) }
+                    DeviceBox(name: model.devices.isEmpty ? "AirDrop" : L("Diğer"), symbol: "dot.radiowaves.left.and.right", shelf: model.shelf)
                 }
-                VStack(spacing: 8) {
-                    IslandButton(icon: "paperplane.fill", help: "AirDrop ile gönder") {
-                        NSSharingService(named: .sendViaAirDrop)?.perform(withItems: model.shelf)
+            }
+            .frame(height: 58)
+
+            if model.shelf.isEmpty {
+                VStack(spacing: 4) {
+                    Image(systemName: "tray.and.arrow.down.fill").font(.system(size: 20))
+                    Text("Dosyaları rafa ya da bir cihaza sürükleyin").font(.system(size: 11))
+                }
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [5])))
+            } else {
+                HStack(spacing: 12) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(model.shelf, id: \.self) { u in FileChip(url: u) }
+                        }
                     }
                     IslandButton(icon: "trash", help: "Rafı temizle") { model.shelf.removeAll() }
                 }
             }
         }
+        .onAppear { model.devices = AirDrop.devices() }
+    }
+}
+
+struct DeviceBox: View {
+    let name: String
+    let symbol: String
+    let shelf: [URL]
+    @State private var targeted = false
+    @State private var hover = false
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: symbol).font(.system(size: 18))
+            Text(name).font(.system(size: 10, weight: .medium)).lineLimit(1).truncationMode(.middle)
+        }
+        .padding(.horizontal, 6)
+        .frame(width: 92, height: 56)
+        .background(RoundedRectangle(cornerRadius: 12).fill(targeted ? Color.blue.opacity(0.5) : .white.opacity(hover ? 0.16 : 0.08)))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(targeted ? Color.blue : .white.opacity(0.12), lineWidth: 1))
+        .scaleEffect(targeted ? 1.06 : 1)
+        .animation(.easeOut(duration: 0.15), value: targeted)
+        .contentShape(Rectangle())
+        .onHover { hover = $0 }
+        .onTapGesture { AirDrop.send(shelf) }
+        .onDrop(of: [.fileURL], isTargeted: $targeted) { AirDrop.receive($0); return true }
+        .help(shelf.isEmpty ? L("\(name): dosyayı buraya bırak") : L("\(name): dosya bırak ya da tıkla, raftakiler gitsin"))
     }
 }
 
@@ -443,7 +402,7 @@ struct FileChip: View {
             Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 52, height: 52)
             Text(url.lastPathComponent).font(.system(size: 10)).lineLimit(1).frame(width: 76)
         }
-        .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
+        .onDrag { NSItemProvider(object: url as NSURL) }
         .onTapGesture(count: 2) { NSWorkspace.shared.open(url) }
         .help(url.path)
     }
@@ -451,7 +410,7 @@ struct FileChip: View {
 
 struct IslandButton: View {
     let icon: String
-    let help: String
+    let help: LocalizedStringKey
     let action: () -> Void
     @State private var hover = false
 

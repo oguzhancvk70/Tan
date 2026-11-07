@@ -54,9 +54,24 @@ struct GeneralTab: View {
     @Bindable var prefs = Preferences.shared
     @State private var login = LoginItem.isEnabled
     @State private var loginError: String?
+    @State private var language = AppLanguage.current
+    private let initialLanguage = AppLanguage.current
 
     var body: some View {
         Form {
+            Section("Dil · Language") {
+                Picker("Dil · Language", selection: $language) {
+                    ForEach(AppLanguage.allCases) { Text($0.label).tag($0) }
+                }
+                .onChange(of: language) { _, v in v.apply() }
+                if language != initialLanguage {
+                    HStack {
+                        Text("Dil değişikliği için Tan yeniden başlamalı.").font(.caption).foregroundStyle(.orange)
+                        Spacer()
+                        Button("Yeniden Başlat") { AppLanguage.relaunch() }
+                    }
+                }
+            }
             Section("Başlangıç") {
                 Toggle("Oturum açılışında başlat", isOn: $login)
                     .onChange(of: login) { _, v in
@@ -88,7 +103,7 @@ struct GeneralTab: View {
                 Toggle("Pano geçmişi", isOn: $prefs.islandClipboard)
                 Toggle("Yeni ekran görüntülerini Raf'a ekle", isOn: $prefs.islandScreenshots)
                 Toggle("Biten indirmeleri Raf'a ekle", isOn: $prefs.islandDownloads)
-                Text("İmleç çentiğe gelince açılır: Ana, Müzik, Zamanlayıcı ve Raf sayfaları. Rafa dosya sürükleyip AirDrop ile gönderebilirsiniz.")
+                Text("İmleç çentiğe gelince açılır: Müzik, Takvim, Raf, Pano ve Sistem sayfaları. Dosyaları rafa ya da bir cihaz kutucuğuna sürükleyip AirDrop ile gönderebilirsiniz.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Claude") {
@@ -105,7 +120,7 @@ struct GeneralTab: View {
                     }
                 }
                 Toggle("Claude dosya düzenleyebilsin", isOn: $prefs.claudeEdits)
-                Text(ClaudeChat.binary() != nil ? "Claude Code bulundu; sohbet aboneliğinle çalışır." : "Claude Code bulunamadı. VS Code'da Claude Code eklentisi kurulu olmalı.")
+                Text(ClaudeChat.binary() != nil ? L("Claude Code bulundu; sohbet aboneliğinle çalışır.") : L("Claude Code bulunamadı. VS Code'da Claude Code eklentisi kurulu olmalı."))
                     .font(.caption).foregroundStyle(ClaudeChat.binary() != nil ? Color.secondary : Color.orange)
             }
             Section("Rastgele Duvar Kâğıdı") {
@@ -130,7 +145,7 @@ struct ShortcutRecorder: View {
 
     var body: some View {
         HStack {
-            Button(recording ? "Tuşlara basın…" : (hotKey?.display ?? "Yok")) { recording ? stop() : start() }
+            Button(recording ? L("Tuşlara basın…") : (hotKey?.display ?? L("Yok"))) { recording ? stop() : start() }
                 .frame(minWidth: 120)
             if hotKey != nil && !recording {
                 Button { hotKey = nil; HotKeyManager.shared.register(nil, id: id) } label: { Image(systemName: "xmark.circle.fill") }

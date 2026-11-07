@@ -13,8 +13,8 @@ enum Appearance {
         guard let err else { return nil }
         let code = err[NSAppleScript.errorNumber] as? Int ?? 0
         if code == -1743 {
-            return "System Events'e erişim izni yok. Sistem Ayarları › Gizlilik ve Güvenlik › Otomasyon bölümünden Tan için System Events'i açın."
+            return L("System Events'e erişim izni yok. Sistem Ayarları › Gizlilik ve Güvenlik › Otomasyon bölümünden Tan için System Events'i açın.")
         }
-        return err[NSAppleScript.errorMessage] as? String ?? "AppleScript hatası (\(code))"
+        return err[NSAppleScript.errorMessage] as? String ?? L("AppleScript hatası (\(code))")
     }
 }
