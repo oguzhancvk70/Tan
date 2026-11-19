@@ -73,6 +73,11 @@ The expanded island has six pages, three on each side of the notch:
 #### Screenshots
 
 <p align="center">
+  <img src="docs/screenshots/clipboard.png" alt="Clipboard page: an entry tagged with the TextEdit app it was copied from" width="820">
+  <br><sub><b>Clipboard</b> — every entry shows the app it was copied from</sub>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/system-details.png" alt="System page expanded: CPU, RAM, disk and network gauges, top processes by CPU and memory, and a Problems column with a recent error report" width="820">
   <br><sub><b>System</b> — gauges, top processes by CPU and memory, and recent problems</sub>
 </p>
@@ -94,6 +99,10 @@ The expanded island has six pages, three on each side of the notch:
 ### 🗄 Desktop shelf
 
 Screenshots, screen recordings, downloads, exported files and folders usually end up on the Desktop and stay there. With the Desktop shelf turned on (Settings → General → **Collect new Desktop items on the Shelf**, on by default), Tan takes them off the Desktop and keeps them in the island instead.
+
+<p align="center">
+  <img src="docs/screenshots/shelf.png" alt="Shelf page with screenshots, videos, images and folders taken from the Desktop" width="820">
+</p>
 
 **What happens to a new Desktop item**
 
