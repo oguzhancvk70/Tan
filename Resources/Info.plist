@@ -30,5 +30,9 @@
 	<string>Tan, bağlanan kulaklığın pil seviyesini göstermek için Bluetooth kullanır.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Tan, yaklaşan toplantıları dinamik adada göstermek için takviminizi okur.</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Tan, masaüstüne gelen yeni dosyaları dinamik adadaki Raf'a toplamak için Masaüstü klasörünü izler.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Tan, masaüstünden toplanan dosyaları Belgeler/Ada klasöründe saklar.</string>
 </dict>
 </plist>

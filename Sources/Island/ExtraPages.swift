@@ -29,6 +29,12 @@ struct ClipRow: View {
     @State private var hover = false
     @State private var copied = false
 
+    private var help: String {
+        let src = item.app.map { L("Kaynak: \($0)") } ?? ""
+        let paths = item.files.map { ($0.path as NSString).abbreviatingWithTildeInPath }.joined(separator: "\n")
+        return [src, paths].filter { !$0.isEmpty }.joined(separator: "\n")
+    }
+
     var body: some View {
         Button {
             AppController.shared.clipboard.copy(item)
@@ -48,10 +54,27 @@ struct ClipRow: View {
                 .frame(width: 20, height: 20)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 Text(item.preview).font(.system(size: 12)).lineLimit(1)
-                Spacer()
-                Text(copied ? L("Kopyalandı") : item.date.formatted(.relative(presentation: .numeric)))
-                    .font(.system(size: 10)).foregroundStyle(copied ? .green : .secondary)
+                Spacer(minLength: 4)
+                if copied {
+                    Text("Kopyalandı").font(.system(size: 10)).foregroundStyle(.green).fixedSize()
+                } else {
+                    // kaynak uygulama
+                    if let app = item.app {
+                        HStack(spacing: 3) {
+                            if let icon = item.appIcon { Image(nsImage: icon).resizable().frame(width: 13, height: 13) }
+                            Text(app).lineLimit(1)
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Capsule().fill(.white.opacity(0.1)))
+                        .frame(maxWidth: 110, alignment: .trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text(item.date.formatted(.relative(presentation: .numeric)))
+                        .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize()
+                }
             }
+            .help(help)
             .padding(.horizontal, 8).padding(.vertical, 5)
             .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hover ? 0.12 : 0.05)))
             .contentShape(Rectangle())
@@ -68,7 +91,7 @@ struct SystemPage: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 14) {
+            HStack(spacing: 10) {
                 Gauge(title: "CPU", value: s.cpu, label: pct(Int(s.cpu * 100)), tint: .blue)
                 Gauge(title: "RAM", value: s.memTotal > 0 ? s.memUsed / s.memTotal : 0,
                       label: bytes(s.memUsed, .memory), tint: .purple)
@@ -79,7 +102,7 @@ struct SystemPage: View {
                     Label(bytes(s.down, .file) + "/s", systemImage: "arrow.down").font(.system(size: 12, weight: .medium)).monospacedDigit()
                     Label(bytes(s.up, .file) + "/s", systemImage: "arrow.up").font(.system(size: 12, weight: .medium)).monospacedDigit()
                 }
-                .frame(width: 110, alignment: .leading)
+                .frame(width: 96, alignment: .leading)
                 Button { model.systemDetails.toggle() } label: {
                     Image(systemName: model.systemDetails ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .bold))
@@ -93,7 +116,7 @@ struct SystemPage: View {
 
             // detaylar: süreçler + hatalar
             if model.systemDetails {
-                HStack(alignment: .top, spacing: 16) {
+                HStack(alignment: .top, spacing: 12) {
                     ProcList(title: "İşlemci", items: s.procCPU) { ($0.cpu / 100).formatted(.percent.precision(.fractionLength(1))) }
                     ProcList(title: "Bellek", items: s.procMem) { bytes($0.mem, .memory) }
                     IssueList(items: s.issues)
@@ -130,7 +153,7 @@ private struct ProcList: View {
                 HStack(spacing: 6) {
                     Text(p.name).lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 4)
-                    Text(value(p)).monospacedDigit().foregroundStyle(.secondary)
+                    Text(value(p)).monospacedDigit().foregroundStyle(.secondary).fixedSize()
                 }
                 .font(.system(size: 11))
             }
@@ -151,16 +174,18 @@ private struct IssueList: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 9)).foregroundStyle(.orange)
-                        Text(i.title).lineLimit(1)
+                        Text(i.title).lineLimit(1).truncationMode(.tail)
                         Spacer(minLength: 4)
-                        Text(i.date.map { "\(i.detail) · \($0.formatted(.relative(presentation: .numeric)))" } ?? i.detail)
-                            .lineLimit(1).foregroundStyle(.secondary)
+                        if let d = i.date {
+                            Text(d.formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated)))
+                                .lineLimit(1).foregroundStyle(.secondary).fixedSize()
+                        }
                     }
                     .font(.system(size: 11))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help(i.url?.path ?? i.detail)
+                .help(i.url.map { "\(i.detail) · \($0.path)" } ?? i.detail)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -183,9 +208,9 @@ private struct Gauge: View {
                     .animation(.easeOut(duration: 0.4), value: value)
                 Text(title).font(.system(size: 11, weight: .semibold))
             }
-            .frame(width: 62, height: 62)
+            .frame(width: 54, height: 54)
             Text(label).font(.system(size: 10)).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
         }
-        .frame(width: 84)
+        .frame(width: 72)
     }
 }

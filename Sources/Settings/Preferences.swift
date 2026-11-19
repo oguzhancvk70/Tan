@@ -68,10 +68,8 @@ struct WallpaperChoice: Codable, Equatable {
     var islandClipboard: Bool { didSet { UserDefaults.standard.set(islandClipboard, forKey: "islandClipboard") } }
     var islandScreenshots: Bool { didSet { UserDefaults.standard.set(islandScreenshots, forKey: "islandScreenshots") } }
     var islandDownloads: Bool { didSet { UserDefaults.standard.set(islandDownloads, forKey: "islandDownloads") } }
-    var claudeFolder: String { didSet { UserDefaults.standard.set(claudeFolder, forKey: "claudeFolder") } }
-    var claudeEdits: Bool { didSet { UserDefaults.standard.set(claudeEdits, forKey: "claudeEdits") } }
+    var islandDesktop: Bool { didSet { UserDefaults.standard.set(islandDesktop, forKey: "islandDesktop") } }
     var hotKey: HotKey? { didSet { Self.saveHotKey(hotKey, "hotKey") } }
-    var claudeHotKey: HotKey? { didSet { Self.saveHotKey(claudeHotKey, "claudeHotKey") } }
 
     private static func saveHotKey(_ hk: HotKey?, _ key: String) {
         if let hk, let data = try? JSONEncoder().encode(hk) {
@@ -104,14 +102,12 @@ struct WallpaperChoice: Codable, Equatable {
         islandEnabled = d.bool(forKey: "islandEnabled")
         shuffleQuery = d.string(forKey: "shuffleQuery") ?? ""
         includeAnime = d.bool(forKey: "includeAnime")
-        d.register(defaults: ["islandClipboard": true, "islandScreenshots": true, "islandDownloads": true])
+        d.register(defaults: ["islandClipboard": true, "islandScreenshots": true, "islandDownloads": true, "islandDesktop": true])
         islandClipboard = d.bool(forKey: "islandClipboard")
         islandScreenshots = d.bool(forKey: "islandScreenshots")
         islandDownloads = d.bool(forKey: "islandDownloads")
-        claudeFolder = d.string(forKey: "claudeFolder") ?? NSHomeDirectory()
-        claudeEdits = d.bool(forKey: "claudeEdits")
+        islandDesktop = d.bool(forKey: "islandDesktop")
         hotKey = Self.loadHotKey("hotKey", .default)
-        claudeHotKey = Self.loadHotKey("claudeHotKey", .claudeDefault)
     }
 
     func choice(for mode: Mode) -> WallpaperChoice? { mode == .light ? light : dark }

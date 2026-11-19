@@ -7,9 +7,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/oguzhancvk70/Tan?style=social)](https://github.com/oguzhancvk70/Tan/stargazers)
 
-**A Dynamic Island for your Mac's notch — plus automatic light/dark mode wallpapers, a Claude chat panel, clipboard history and live system stats.**
+**A Dynamic Island for your Mac's notch — with a shelf that keeps your Desktop clean, clipboard history that remembers where you copied from, automatic light/dark mode wallpapers and live system stats.**
 
-Tan is a lightweight, native macOS menu bar app written in Swift and SwiftUI. It turns the notch on your MacBook into an interactive "island" that shows what's playing, your next meeting, battery and headphone status, recent screenshots and downloads, and detailed CPU / memory usage. It also switches your wallpaper when macOS changes between light and dark mode.
+Tan is a lightweight, native macOS menu bar app written in Swift and SwiftUI. It turns the notch on your MacBook into an interactive "island" that shows what's playing, your next meeting and headphone status, collects everything that lands on your Desktop onto a browsable shelf, and shows detailed CPU / memory usage. It also switches your wallpaper when macOS changes between light and dark mode.
 
 No third-party dependencies. No accounts. No telemetry. Everything runs locally on your Mac.
 
@@ -18,6 +18,17 @@ No third-party dependencies. No accounts. No telemetry. Everything runs locally 
 </p>
 
 > 🌍 Available in **English** and **Turkish** — follows your system language, or pick one in Settings → General. (Screenshots show the Turkish interface.)
+
+---
+
+## What's new in 1.4
+
+- 🗄 **The Desktop shelf.** New files, folders, screenshots, screen recordings and downloads no longer pile up on your Desktop. Tan moves each one to `Documents/Ada` once it is fully written and puts it on a wooden shelf inside the island. → [How it works](#-desktop-shelf)
+- 📂 **Browse folders inside the island.** Double-click a folder on the shelf and the island opens it in place. Go deeper into subfolders, then use the **Back** bar to return.
+- ↔️ **Bigger shelf, compact everything else.** The island grows only on the Shelf page and returns to its compact size on every other page.
+- 📋 **Clipboard shows the source.** Every clipboard entry shows the icon and name of the app you copied it from.
+- 🎛 **Balanced tab bar.** Three pages on each side of the notch: Music · Calendar · Clipboard | AirDrop · System · Shelf. AirDrop devices now have their own page.
+- 🧹 **Removed:** the Claude chat panel, and the battery and settings buttons on the island (macOS already shows battery in the menu bar; Settings are in the menu bar icon).
 
 ---
 
@@ -43,14 +54,20 @@ No third-party dependencies. No accounts. No telemetry. Everything runs locally 
 
 Move the cursor onto the notch and the island expands. When collapsed, it shows live activity on both sides of the notch.
 
+The expanded island has six pages, three on each side of the notch:
+
+```
+  ♪ Music   📅 Calendar   📋 Clipboard   ▐ notch ▌   📡 AirDrop   ⏱ System   🗄 Shelf
+```
+
 
 | Page | What it does |
 | --- | --- |
 | **Music** | Now playing from any app (Spotify, Apple Music, browsers…) with artwork, progress bar and play / pause / next / previous controls. Click the artwork to open the source app. |
 | **Calendar** | Your next meeting with a countdown and a one-click **Join** button for video-call links. |
-| **Shelf** | A temporary drop zone for files. Drag files onto the notch to park them, then drag them out anywhere. Recent screenshots and downloads land here automatically. |
-| **AirDrop devices** | Every Apple device paired with your Mac (iPhone, iPad, Mac) appears as its own tile on the Shelf page. Drop a file on a tile — or click it to send everything on the shelf — and AirDrop opens with those files. |
-| **Clipboard** | The last 20 things you copied (text, images, files). Click an entry to copy it again. Password-manager entries are ignored. |
+| **Clipboard** | The last 20 things you copied (text, images, files), each tagged with the **app it was copied from** (icon + name). Click an entry to copy it again; hover it to see the source app and, for files, their full path. Password-manager entries are ignored. |
+| **AirDrop** | Every Apple device paired with your Mac (iPhone, iPad, Mac) appears as its own tile. Drop a file on a tile — or click it to send the files you parked on the shelf — and AirDrop opens with those files. |
+| **Shelf** | Your Desktop, tidied up: everything new that lands on the Desktop sits here on wooden shelves, together with files you drag onto the notch. Double-click a folder to browse it inside the island. See [Desktop shelf](#-desktop-shelf) below. |
 | **System** | CPU, RAM, disk and network gauges. Expand **Details** to see the top 5 processes by CPU and by memory, plus a **Problems** column listing crash, hang, resource and kernel-panic reports from the last 24 hours, and live thermal / memory-pressure warnings. The column stays empty when nothing is wrong. Click a report to open it in Console. |
 
 #### Screenshots
@@ -61,8 +78,8 @@ Move the cursor onto the notch and the island expands. When collapsed, it shows 
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/shelf-airdrop.png" alt="Shelf page with an AirDrop device tile above an empty drop zone" width="820">
-  <br><sub><b>Shelf + AirDrop</b> — paired devices appear as tiles; drop a file on one to send it</sub>
+  <img src="docs/screenshots/shelf-airdrop.png" alt="AirDrop page with a paired device tile" width="820">
+  <br><sub><b>AirDrop</b> — paired devices appear as tiles; drop a file on one to send it (screenshot from 1.3)</sub>
 </p>
 
 **Live activities & notifications** (each can be toggled in Settings):
@@ -72,7 +89,44 @@ Move the cursor onto the notch and the island expands. When collapsed, it shows 
 - Upcoming meeting alerts
 - Bluetooth headphones connected, with battery level
 - Microphone 🟠 and camera 🟢 in-use indicators
-- New screenshot / new download
+- New screenshot / new download / item taken from the Desktop
+
+### 🗄 Desktop shelf
+
+Screenshots, screen recordings, downloads, exported files and folders usually end up on the Desktop and stay there. With the Desktop shelf turned on (Settings → General → **Collect new Desktop items on the Shelf**, on by default), Tan takes them off the Desktop and keeps them in the island instead.
+
+**What happens to a new Desktop item**
+
+1. Tan notices the new file or folder on the Desktop.
+2. It waits until the item is **completely finished** (see below).
+3. It moves the item to `~/Documents/Ada`. This is a rename on the same disk, so the data itself is never copied or rewritten.
+4. The island shows a short notification, and the item appears on the shelf.
+
+**Your files are never moved half-written.** Instead of a fixed timer, an item is moved only when **all** of these are true:
+
+| Check | Why |
+| --- | --- |
+| Size, modification date and (for folders) item count haven't changed for **10 seconds** | The item is no longer being written |
+| No app has the file open (for folders: no file inside is open) | Ongoing screen recordings, exports and downloads keep the item on the Desktop for as long as they take |
+| Finder is not copying it | Finder marks files while it copies them; Tan waits until the mark is gone |
+| It is not a temporary or hidden file | `.download`, `.crdownload`, `.part`, `.tmp` and dot-files are always skipped |
+
+Typical result: a screenshot or a small file moves after about 10–12 seconds. A long screen recording or a large download moves about 10 seconds after it finishes, however long it takes.
+
+**What Tan never touches**
+
+- Everything that was already on your Desktop when you turned the feature on, even if you rename it later.
+- Items you put back with **Put back on Desktop**.
+- A copy you drag from the shelf to the Desktop (Tan recognises it as yours).
+
+**Using the shelf**
+
+- Double-click a file to open it. Drag it out to any app, folder or the Desktop.
+- Double-click a **folder** to open it inside the island. You can go into subfolders; a **Back** bar and a path (`Shelf › Projects › 2026`) show where you are. Collapsing the island returns to the shelf.
+- Right-click an item for **Open**, **Show in Finder**, **Put back on Desktop** and **Move to Trash**.
+- The folder button opens `Documents/Ada` in Finder.
+- Images and videos show a thumbnail; when you hover an item, it lifts off the shelf.
+- The island grows on the Shelf page so there is room to browse, and shrinks back on every other page.
 
 
 ### 🌗 Light & dark mode wallpapers
@@ -90,19 +144,9 @@ Move the cursor onto the notch and the island expands. When collapsed, it shows 
   </tr>
   <tr>
     <td align="center"><img src="docs/screenshots/settings-general.png" alt="Settings: launch at login, hotkey and Dynamic Island toggles"><br><sub><b>General</b> — login, hotkey, island options</sub></td>
-    <td align="center"><img src="docs/screenshots/settings-claude.png" alt="Settings: Claude hotkey, working folder and file-edit toggle, random wallpaper search term"><br><sub><b>Claude &amp; random wallpaper</b> settings</sub></td>
+    <td></td>
   </tr>
 </table>
-
-### ✦ Claude chat panel
-
-- A floating chat panel (⌥Space or the ✦ button on the island) powered by your local [Claude Code](https://claude.com/claude-code) CLI. It uses your existing Claude subscription — no API key is stored in Tan.
-- Conversations continue (`--resume`), you can choose a working folder, and file edits can optionally be auto-accepted.
-- Tan finds the `claude` binary automatically in Homebrew, `~/.local/bin`, `~/.claude/local` or the VS Code extension folder.
-
-<p align="center">
-  <img src="docs/screenshots/claude.png" alt="Floating Claude chat panel with folder picker, file-edit toggle and message box" width="560">
-</p>
 
 ---
 
@@ -110,7 +154,6 @@ Move the cursor onto the notch and the island expands. When collapsed, it shows 
 
 - macOS **14 Sonoma** or later
 - Apple Silicon or Intel Mac. A notched MacBook gives the best experience; on other displays the island appears as a small pill at the top center of the main screen.
-- *Optional:* [Claude Code](https://claude.com/claude-code) installed and signed in, for the chat panel.
 
 ---
 
@@ -160,11 +203,14 @@ make install
 | Action | How |
 | --- | --- |
 | Open the island | Move the cursor onto the notch |
+| Keep the Desktop clean | Nothing to do — new Desktop items move to the Shelf automatically |
 | Park files on the shelf | Drag files onto the notch |
-| Send a file to a device | Drop it on a device tile on the Shelf page |
+| Browse a folder on the shelf | Double-click it; use **Back** to return |
+| Put an item back on the Desktop | Right-click it on the shelf → **Put back on Desktop** |
+| See where you copied something from | Clipboard page — the app icon and name next to each entry |
+| Send a file to a device | Drop it on a device tile on the AirDrop page |
 | Toggle light / dark mode | **⌃⌥⌘D**, ⌥-click the menu bar icon, or the switch in the menu |
-| Open the Claude chat | **⌥Space**, or the ✦ button on the island |
-| Settings | Click the menu bar icon → Settings, or the ⚙︎ button on the island |
+| Settings | Click the menu bar icon → Settings… (⌘,) |
 | Change language | Settings → General → **Language** (System / Türkçe / English), then restart Tan |
 
 Hotkeys can be changed in **Settings → General**.
@@ -181,6 +227,8 @@ Tan asks only for what a feature needs, when the feature first needs it:
 | **Automation (Spotify / Music)** | Music controls fallback |
 | **Calendars** | Showing upcoming meetings |
 | **Bluetooth** | Headphone battery level and listing paired devices for AirDrop |
+| **Desktop folder** | Noticing new items on the Desktop for the shelf |
+| **Documents folder** | Keeping shelf items in `Documents/Ada` |
 
 Tan does **not** request Accessibility, Screen Recording or Full Disk Access. The app runs outside the App Sandbox so that it can read the now-playing info, the process list and diagnostic reports.
 
@@ -188,8 +236,10 @@ Tan does **not** request Accessibility, Screen Recording or Full Disk Access. Th
 
 ## Privacy
 
-- **Nothing leaves your Mac**, except image downloads from Wallhaven / Bing that you choose to use, and messages you send in the Claude panel (handled by your own Claude Code CLI).
+- **Nothing leaves your Mac**, except image downloads from Wallhaven / Bing that you choose to use.
 - Clipboard history is kept **in memory only** and cleared when Tan quits. Items marked as concealed or transient by password managers are skipped.
+- Desktop items are only **moved on your own disk** (Desktop → `Documents/Ada`). Nothing is uploaded, and you can turn the feature off at any time; items already on the shelf stay in `Documents/Ada`.
+- The clipboard source is the app name macOS reports; it is kept in memory with the entry and never stored.
 - The mic and camera indicators only check *whether* a device is in use; Tan never records audio or video.
 - No analytics, no crash reporting, no network calls in the background besides the wallpaper sources.
 
@@ -201,6 +251,8 @@ Tan does **not** request Accessibility, Screen Recording or Full Disk Access. Th
 - **AirDrop to a specific device:** macOS has no public API to send directly to a chosen device. Dropping on a device tile opens the AirDrop sheet with your files, where you confirm the recipient.
 - Wallpapers are applied per display; macOS offers no public API to set a different wallpaper per Space.
 - The island is shown only on the main (notched) display.
+- **Desktop shelf:** a file that an app keeps open (for example a video playing in QuickTime) stays on the Desktop until the app closes it. This is intentional, so nothing is moved while it is in use.
+- **Clipboard source:** when an app doesn't label its clipboard data, Tan uses the app that was in front when the copy happened, which is right in almost every case.
 - Showing system notifications or answering calls from the island is not possible with public APIs.
 
 ---
@@ -212,9 +264,8 @@ Sources/
 ├─ App/               App entry point, menu bar controller, central app controller, localization
 ├─ Core/              Appearance switching, wallpaper manager, dimming, hotkeys, login item
 ├─ Activities/        Now playing, battery, calendar, mic/camera, audio devices,
-│                     clipboard, screenshots, downloads, system stats, AirDrop
+│                     clipboard, screenshots, downloads, Desktop collector, system stats, AirDrop
 ├─ Island/            Dynamic Island panel, views and pages
-├─ Claude/            Claude Code CLI chat (stream-json) and its UI
 ├─ Online/            Wallhaven and Bing sources
 ├─ WallpaperSources/  System / file / folder wallpaper sources
 ├─ Settings/          Preferences and storage
@@ -244,4 +295,4 @@ Please keep the app dependency-free and lightweight.
 
 Released under the [MIT License](LICENSE).
 
-*Tan is an independent project and is not affiliated with Apple or Anthropic. "AirDrop", "Dynamic Island" and "macOS" are trademarks of Apple Inc.; "Claude" is a trademark of Anthropic.*
+*Tan is an independent project and is not affiliated with Apple. "AirDrop", "Dynamic Island" and "macOS" are trademarks of Apple Inc.*

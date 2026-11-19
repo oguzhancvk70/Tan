@@ -15,6 +15,7 @@ import AppKit
     @ObservationIgnored let clipboard = ClipboardService()
     @ObservationIgnored let screenshots = ScreenshotWatcher()
     @ObservationIgnored let downloads = DownloadsWatcher()
+    @ObservationIgnored let desktop = DesktopCollector()
     @ObservationIgnored let stats = SystemStats()
     @ObservationIgnored var onModeChange: (() -> Void)?
     @ObservationIgnored private var observer: AppearanceObserver?
@@ -32,9 +33,7 @@ import AppKit
             onEnvironment: { AppController.shared.reapply() })
         wallpaper.onApplied = { url, mode in AppController.shared.applied(url, mode) }
         HotKeyManager.shared.setAction(id: 1) { AppController.shared.toggle() }
-        HotKeyManager.shared.setAction(id: 2) { ClaudePanelController.shared.toggle() }
         HotKeyManager.shared.register(prefs.hotKey, id: 1)
-        HotKeyManager.shared.register(prefs.claudeHotKey, id: 2)
         island.setup()
         startActivities()
         reapply()
@@ -97,7 +96,7 @@ import AppKit
 
         screenshots.onNew = { u in
             let c = AppController.shared
-            guard c.prefs.islandScreenshots else { return }
+            guard c.prefs.islandScreenshots, !u.path.hasPrefix(c.desktop.target.path + "/") else { return }
             c.island.model.addToShelf(u)
             c.island.show(IslandToast(icon: "camera.viewfinder", tint: .white, title: L("Ekran görüntüsü"), subtitle: L("Raf'a eklendi"),
                                       image: Thumbnail.make(u, maxPixel: 160) ?? NSWorkspace.shared.icon(forFile: u.path)))
@@ -113,6 +112,17 @@ import AppKit
                                       image: img ?? NSWorkspace.shared.icon(forFile: u.path)))
         }
         downloads.start()
+
+        desktop.onList = { AppController.shared.island.model.collected = $0 }
+        desktop.onCollect = { old, new in
+            let c = AppController.shared
+            c.island.model.shelf.removeAll { $0.path == old.path }
+            if c.prefs.islandScreenshots, DesktopCollector.isScreenCapture(new) { return }
+            let img = ImageFiles.isImage(new) ? Thumbnail.make(new, maxPixel: 160) : nil
+            c.island.show(IslandToast(icon: "tray.and.arrow.down.fill", tint: .white, title: new.lastPathComponent, subtitle: L("Masaüstünden alındı · Raf'ta"),
+                                      image: img ?? NSWorkspace.shared.icon(forFile: new.path)))
+        }
+        desktop.start()
     }
 
     private func batteryChanged(_ new: BatteryState, _ old: BatteryState?) {

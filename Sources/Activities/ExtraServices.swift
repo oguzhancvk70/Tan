@@ -10,6 +10,8 @@ import IOBluetooth
         var image: NSImage?
         var files: [URL] = []
         var date = Date()
+        var app: String?
+        var appIcon: NSImage?
 
         var preview: String {
             if let text { return text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ") }
@@ -52,10 +54,22 @@ import IOBluetooth
         } else if types.contains(.png) || types.contains(.tiff), let img = NSImage(pasteboard: pb) {
             item = Item(image: img)
         }
-        guard let item else { return }
+        guard var item else { return }
+        if let src = Self.source(pb) {
+            item.app = src.localizedName
+            item.appIcon = src.icon
+        }
         items.removeAll { $0.same(as: item) }
         items.insert(item, at: 0)
         if items.count > 20 { items.removeLast(items.count - 20) }
+    }
+
+    // kopyalamanın yapıldığı uygulama: nspasteboard kaynak etiketi, yoksa öndeki uygulama
+    private static func source(_ pb: NSPasteboard) -> NSRunningApplication? {
+        if let bid = pb.string(forType: .init("org.nspasteboard.source")),
+           let a = NSRunningApplication.runningApplications(withBundleIdentifier: bid).first { return a }
+        guard let a = NSWorkspace.shared.frontmostApplication, a.bundleIdentifier != Bundle.main.bundleIdentifier else { return nil }
+        return a
     }
 
     func copy(_ i: Item) {

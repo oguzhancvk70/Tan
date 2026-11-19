@@ -103,25 +103,12 @@ struct GeneralTab: View {
                 Toggle("Pano geçmişi", isOn: $prefs.islandClipboard)
                 Toggle("Yeni ekran görüntülerini Raf'a ekle", isOn: $prefs.islandScreenshots)
                 Toggle("Biten indirmeleri Raf'a ekle", isOn: $prefs.islandDownloads)
+                Toggle("Masaüstüne gelenleri Raf'a topla", isOn: $prefs.islandDesktop)
+                    .onChange(of: prefs.islandDesktop) { _, v in AppController.shared.desktop.setEnabled(v) }
+                Text("Masaüstüne gelen yeni dosya ve klasörler, yazılması bitip 10 saniye dokunulmadan kaldıktan sonra Belgeler/Ada klasörüne taşınır. Masaüstünde zaten duranlara dokunulmaz.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Text("İmleç çentiğe gelince açılır: Müzik, Takvim, Raf, Pano ve Sistem sayfaları. Dosyaları rafa ya da bir cihaz kutucuğuna sürükleyip AirDrop ile gönderebilirsiniz.")
                     .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Claude") {
-                LabeledContent("Sohbeti aç") { ShortcutRecorder(hotKey: $prefs.claudeHotKey, id: 2) }
-                LabeledContent("Çalışma klasörü") {
-                    HStack {
-                        Text((prefs.claudeFolder as NSString).abbreviatingWithTildeInPath).foregroundStyle(.secondary)
-                        Button("Seç…") {
-                            let o = NSOpenPanel()
-                            o.canChooseDirectories = true
-                            o.canChooseFiles = false
-                            if o.runModal() == .OK, let u = o.url { prefs.claudeFolder = u.path }
-                        }
-                    }
-                }
-                Toggle("Claude dosya düzenleyebilsin", isOn: $prefs.claudeEdits)
-                Text(ClaudeChat.binary() != nil ? L("Claude Code bulundu; sohbet aboneliğinle çalışır.") : L("Claude Code bulunamadı. VS Code'da Claude Code eklentisi kurulu olmalı."))
-                    .font(.caption).foregroundStyle(ClaudeChat.binary() != nil ? Color.secondary : Color.orange)
             }
             Section("Rastgele Duvar Kâğıdı") {
                 TextField("Arama terimi (boş bırakılırsa hepsi)", text: $prefs.shuffleQuery)

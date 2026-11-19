@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-enum IslandPage: Hashable { case music, calendar, shelf, clipboard, system }
+enum IslandPage: Hashable { case music, calendar, clipboard, airdrop, system, shelf }
 enum LiveKind: Equatable { case meeting, music }
 
 struct IslandToast: Equatable {
@@ -25,6 +25,8 @@ struct IslandToast: Equatable {
     var cam = false
     var battery: BatteryState?
     var shelf: [URL] = []
+    var collected: [URL] = []
+    var folderStack: [URL] = []
     var devices: [AirDevice] = []
     var systemDetails = UserDefaults.standard.bool(forKey: "islandSystemDetails") {
         didSet { UserDefaults.standard.set(systemDetails, forKey: "islandSystemDetails") }
@@ -35,14 +37,23 @@ struct IslandToast: Equatable {
     var notchWidth: CGFloat { hasNotch ? notch.width : 0 }
     var barHeight: CGFloat { hasNotch ? notch.height : 30 }
     var topInset: CGFloat { hasNotch ? notch.height : 6 }
-    var panelSize: CGSize { CGSize(width: max(notchWidth + 440, 620), height: barHeight + 250) }
+    var baseWidth: CGFloat { max(notchWidth + 280, 460) }
+    var shelfWidth: CGFloat { max(notchWidth + 420, 600) }
+    var panelSize: CGSize { CGSize(width: shelfWidth, height: barHeight + 300) }
     var expandedSize: CGSize {
         let h: CGFloat = switch page {
         case .system: systemDetails ? 250 : 160
-        case .shelf: 200
+        case .shelf: 300
+        case .airdrop: 110
         default: 160
         }
-        return CGSize(width: panelSize.width, height: barHeight + h)
+        return CGSize(width: page == .shelf ? shelfWidth : baseWidth, height: barHeight + h)
+    }
+
+    // geçici raf öğeleri önde, masaüstünden toplananlar arkada
+    var shelfItems: [URL] {
+        let kept = Set(collected.map(\.path))
+        return shelf.filter { !kept.contains($0.path) } + collected
     }
 
     func addToShelf(_ u: URL) {
@@ -158,7 +169,7 @@ struct IslandToast: Equatable {
     }
 
     func track() {
-        guard let s = screen, panel != nil, !ClaudePanelController.shared.isVisible else { return }
+        guard let s = screen, panel != nil else { return }
         let p = NSEvent.mouseLocation
         if model.phase == .expanded {
             let sz = model.shapeSize
@@ -190,6 +201,7 @@ struct IslandToast: Equatable {
 
     func collapse() {
         model.phase = .idle
+        model.folderStack = []
         panel?.ignoresMouseEvents = true
     }
 

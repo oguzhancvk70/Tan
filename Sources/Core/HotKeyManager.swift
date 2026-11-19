@@ -8,8 +8,6 @@ struct HotKey: Codable, Equatable {
 
     static let `default` = HotKey(keyCode: UInt32(kVK_ANSI_D), modifiers: UInt32(controlKey | optionKey | cmdKey), display: "⌃⌥⌘D")
 
-    static let claudeDefault = HotKey(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey), display: "⌥Space")
-
     static func carbon(_ f: NSEvent.ModifierFlags) -> UInt32 {
         var m = 0
         if f.contains(.command) { m |= cmdKey }

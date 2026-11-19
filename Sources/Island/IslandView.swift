@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import QuickLookThumbnailing
 
 func clock(_ t: TimeInterval) -> String {
     let s = max(0, Int(t.rounded(.up)))
@@ -170,37 +171,22 @@ struct ExpandedView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // çentiğin iki yanında 3 + 3 sekme
             HStack(spacing: 0) {
-                HStack(spacing: 2) {
+                HStack(spacing: 1) {
                     tab(.music, "music.note", "Müzik")
                     tab(.calendar, "calendar", "Takvim")
-                    tab(.shelf, "tray.fill", "Raf")
                     tab(.clipboard, "doc.on.clipboard", "Pano")
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                Color.clear.frame(width: model.hasNotch ? model.notch.width + 12 : 12)
+                HStack(spacing: 1) {
+                    tab(.airdrop, "dot.radiowaves.left.and.right", "AirDrop")
                     tab(.system, "gauge.with.dots.needle.33percent", "Sistem")
+                    tab(.shelf, "tray.fill", "Raf")
+                    PrivacyDots(model: model).padding(.leading, 5)
                 }
-                Spacer(minLength: model.hasNotch ? model.notch.width + 8 : 8)
-                HStack(spacing: 6) {
-                    PrivacyDots(model: model)
-                    if let b = model.battery {
-                        Image(systemName: b.symbol).foregroundStyle(b.charging ? .green : (b.percent <= 20 ? .red : .white))
-                        Text(pct(b.percent)).font(.system(size: 11, weight: .medium)).monospacedDigit()
-                    }
-                    Button { ClaudePanelController.shared.show() } label: {
-                        Image(systemName: "sparkle").font(.system(size: 12, weight: .semibold)).foregroundStyle(.orange)
-                            .frame(width: 22, height: 22).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help("Claude ile sohbet")
-                    Button {
-                        AppController.shared.island.collapse()
-                        SettingsWindow.shared.show()
-                    } label: {
-                        Image(systemName: "gearshape.fill").font(.system(size: 11)).foregroundStyle(.secondary)
-                            .frame(width: 22, height: 22).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help("Ayarlar")
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 14)
             .frame(height: model.barHeight)
@@ -210,6 +196,7 @@ struct ExpandedView: View {
                 case .calendar: CalendarPage(model: model)
                 case .music: MusicPage(model: model)
                 case .shelf: ShelfPage(model: model)
+                case .airdrop: AirDropPage(model: model)
                 case .clipboard: ClipboardPage()
                 case .system: SystemPage(model: model)
                 }
@@ -225,9 +212,9 @@ struct ExpandedView: View {
     private func tab(_ p: IslandPage, _ icon: String, _ help: LocalizedStringKey) -> some View {
         Button { model.page = p } label: {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-                .frame(width: 28, height: 22)
-                .background(RoundedRectangle(cornerRadius: 6).fill(.white.opacity(model.page == p ? 0.18 : 0)))
+                .font(.system(size: 10, weight: .semibold))
+                .frame(width: 22, height: 18)
+                .background(RoundedRectangle(cornerRadius: 5).fill(.white.opacity(model.page == p ? 0.18 : 0)))
                 .foregroundStyle(model.page == p ? .white : .secondary)
                 .contentShape(Rectangle())
         }
@@ -336,8 +323,84 @@ struct ShelfPage: View {
     @Bindable var model: IslandModel
 
     var body: some View {
+        VStack(spacing: 8) {
+            let dir = model.folderStack.last
+            let items = dir.map(Self.contents) ?? model.shelfItems
+            HStack(spacing: 6) {
+                if let dir {
+                    // klasör içi: geri çubuğu ve yol
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { _ = model.folderStack.popLast() }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "chevron.left").font(.system(size: 10, weight: .bold))
+                            Text("Geri").font(.system(size: 11, weight: .semibold))
+                        }
+                        .padding(.horizontal, 7).frame(height: 18)
+                        .background(Capsule().fill(.white.opacity(0.14)))
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    Text(([L("Raf")] + model.folderStack.map(\.lastPathComponent)).joined(separator: " › "))
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.head)
+                    Spacer()
+                    MiniButton(icon: "folder", help: "Finder'da göster") { NSWorkspace.shared.open(dir) }
+                } else {
+                    Text(items.isEmpty ? L("Raf boş") : L("\(items.count) öğe")).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                    Spacer()
+                    MiniButton(icon: "folder", help: "Ada klasörünü aç") { NSWorkspace.shared.open(AppController.shared.desktop.target) }
+                    if !model.shelf.isEmpty { MiniButton(icon: "xmark.circle", help: "Rafı temizle") { model.shelf.removeAll() } }
+                }
+            }
+            .padding(.horizontal, 4)
+            .frame(height: 18)
+
+            GeometryReader { g in
+                let w = g.size.width - 16
+                let cols = max(1, Int(w / 84))
+                let rows = stride(from: 0, to: max(items.count, 1), by: cols).map { Array(items[min($0, items.count)..<min($0 + cols, items.count)]) }
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 10) {
+                        ForEach(0..<max(rows.count, 2), id: \.self) { i in
+                            ShelfRow(items: i < rows.count ? rows[i] : [], model: model, slot: w / CGFloat(cols))
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
+                }
+                .overlay {
+                    if items.isEmpty {
+                        Text(dir == nil ? L("Masaüstüne gelenler ve sürüklediğin dosyalar burada durur") : L("Bu klasör boş"))
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .offset(y: -30)
+                    }
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(LinearGradient(colors: [.white.opacity(0.08), .white.opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.08), lineWidth: 1))
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .id(model.folderStack.count)
+            .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.97)), removal: .opacity))
+        }
+    }
+
+    static func contents(_ dir: URL) -> [URL] {
+        ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? [])
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+    }
+}
+
+// AirDrop cihaz kutucukları
+struct AirDropPage: View {
+    @Bindable var model: IslandModel
+
+    var body: some View {
         VStack(spacing: 10) {
-            // AirDrop cihaz kutucukları
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(model.devices) { DeviceBox(name: $0.name, symbol: $0.symbol, shelf: model.shelf) }
@@ -345,27 +408,119 @@ struct ShelfPage: View {
                 }
             }
             .frame(height: 58)
-
-            if model.shelf.isEmpty {
-                VStack(spacing: 4) {
-                    Image(systemName: "tray.and.arrow.down.fill").font(.system(size: 20))
-                    Text("Dosyaları rafa ya da bir cihaza sürükleyin").font(.system(size: 11))
-                }
-                .foregroundStyle(.secondary)
+            Text("Dosyayı bir cihaza bırak ya da cihaza tıkla: Raf'a bıraktığın dosyalar gider")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [5])))
-            } else {
-                HStack(spacing: 12) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(model.shelf, id: \.self) { u in FileChip(url: u) }
-                        }
-                    }
-                    IslandButton(icon: "trash", help: "Rafı temizle") { model.shelf.removeAll() }
-                }
-            }
         }
         .onAppear { model.devices = AirDrop.devices() }
+    }
+}
+
+// raf tahtası ve üstündeki öğeler
+struct ShelfRow: View {
+    let items: [URL]
+    let model: IslandModel
+    let slot: CGFloat
+
+    private static let top = LinearGradient(colors: [Color(red: 0.62, green: 0.46, blue: 0.31), Color(red: 0.50, green: 0.36, blue: 0.24)], startPoint: .top, endPoint: .bottom)
+    private static let front = LinearGradient(colors: [Color(red: 0.40, green: 0.28, blue: 0.18), Color(red: 0.28, green: 0.19, blue: 0.12)], startPoint: .top, endPoint: .bottom)
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(items, id: \.self) { ShelfItem(url: $0, model: model).frame(width: slot) }
+                Spacer(minLength: 0)
+            }
+            .frame(height: 66, alignment: .bottom)
+            .zIndex(1)
+            Rectangle().fill(Self.top).frame(height: 5).padding(.horizontal, 3)
+            HStack(spacing: 0) {
+                ForEach(items, id: \.self) { u in
+                    Text(u.lastPathComponent)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(Color(red: 0.98, green: 0.92, blue: 0.84).opacity(0.85))
+                        .lineLimit(1).truncationMode(.middle)
+                        .padding(.horizontal, 5)
+                        .frame(width: slot)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(height: 15)
+            .background(RoundedRectangle(cornerRadius: 2).fill(Self.front))
+            .shadow(color: .black.opacity(0.6), radius: 4, y: 4)
+        }
+    }
+}
+
+struct ShelfItem: View {
+    let url: URL
+    let model: IslandModel
+    @State private var thumb: NSImage?
+    @State private var hover = false
+
+    var body: some View {
+        let kept = model.collected.contains { $0.path == url.path }
+        Image(nsImage: thumb ?? NSWorkspace.shared.icon(forFile: url.path))
+            .resizable().scaledToFit()
+            .frame(width: 54, height: 54)
+            .shadow(color: .black.opacity(0.55), radius: hover ? 6 : 2, y: hover ? 6 : 2)
+            .offset(y: hover ? -5 : 0)
+            .scaleEffect(hover ? 1.06 : 1, anchor: .bottom)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: hover)
+            .contentShape(Rectangle())
+            .onHover { hover = $0 }
+            .onDrag { NSItemProvider(object: url as NSURL) }
+            .onTapGesture(count: 2) { if isFolder { enter() } else { NSWorkspace.shared.open(url) } }
+            .contextMenu {
+                if isFolder { Button("İçine gir") { enter() } }
+                Button("Aç") { NSWorkspace.shared.open(url) }
+                Button("Finder'da göster") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                if model.folderStack.isEmpty {
+                    Divider()
+                    if kept {
+                        Button("Masaüstüne geri koy") { AppController.shared.desktop.putBack(url) }
+                        Button("Çöp Sepeti'ne taşı") { AppController.shared.desktop.trash(url) }
+                    } else {
+                        Button("Raftan kaldır") { model.shelf.removeAll { $0 == url } }
+                    }
+                }
+            }
+            .help(url.lastPathComponent)
+            .task(id: url) { thumb = await Self.thumbnail(url) }
+    }
+
+    private var isFolder: Bool {
+        let v = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])
+        return v?.isDirectory == true && v?.isPackage != true
+    }
+
+    private func enter() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { model.folderStack.append(url) }
+    }
+
+    static func thumbnail(_ u: URL) async -> NSImage? {
+        let r = QLThumbnailGenerator.Request(fileAt: u, size: CGSize(width: 54, height: 54), scale: 2, representationTypes: .thumbnail)
+        return try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: r).nsImage
+    }
+}
+
+struct MiniButton: View {
+    let icon: String
+    let help: LocalizedStringKey
+    let action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon).font(.system(size: 10, weight: .semibold))
+                .frame(width: 20, height: 16)
+                .background(RoundedRectangle(cornerRadius: 5).fill(.white.opacity(hover ? 0.18 : 0)))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .onHover { hover = $0 }
+        .help(help)
     }
 }
 
@@ -392,19 +547,6 @@ struct DeviceBox: View {
         .onTapGesture { AirDrop.send(shelf) }
         .onDrop(of: [.fileURL], isTargeted: $targeted) { AirDrop.receive($0); return true }
         .help(shelf.isEmpty ? L("\(name): dosyayı buraya bırak") : L("\(name): dosya bırak ya da tıkla, raftakiler gitsin"))
-    }
-}
-
-struct FileChip: View {
-    let url: URL
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 52, height: 52)
-            Text(url.lastPathComponent).font(.system(size: 10)).lineLimit(1).frame(width: 76)
-        }
-        .onDrag { NSItemProvider(object: url as NSURL) }
-        .onTapGesture(count: 2) { NSWorkspace.shared.open(url) }
-        .help(url.path)
     }
 }
 

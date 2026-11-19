@@ -13,7 +13,7 @@ settings:
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "Apple Development"
     ENABLE_HARDENED_RUNTIME: YES
-    MARKETING_VERSION: "1.3"
+    MARKETING_VERSION: "1.4"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_EMIT_LOC_STRINGS: YES
 targets:
@@ -36,6 +36,8 @@ targets:
         LSApplicationCategoryType: public.app-category.utilities
         NSAppleEventsUsageDescription: "Tan, karanlık/açık mod geçişi için System Events'i, müzik kontrolü için Spotify ve Müzik'i kullanır."
         NSCalendarsFullAccessUsageDescription: "Tan, yaklaşan toplantıları dinamik adada göstermek için takviminizi okur."
+        NSDesktopFolderUsageDescription: "Tan, masaüstüne gelen yeni dosyaları dinamik adadaki Raf'a toplamak için Masaüstü klasörünü izler."
+        NSDocumentsFolderUsageDescription: "Tan, masaüstünden toplanan dosyaları Belgeler/Ada klasöründe saklar."
         NSBluetoothAlwaysUsageDescription: "Tan, bağlanan kulaklığın pil seviyesini göstermek için Bluetooth kullanır."
     entitlements:
       path: Resources/Tan.entitlements
